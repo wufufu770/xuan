@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>APP 下载中心 · 玄览</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+         background: #f4f6fb; color: #1c2333; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+  header h1 { font-size: 20px; }
+  header .back { color: #2b6cf5; text-decoration: none; font-size: 14px; }
+  header .actions { margin-left: auto; display: flex; gap: 10px; }
+  .btn { border: 1px solid #d4dbf0; background: #fff; color: #2b6cf5; border-radius: 8px;
+         padding: 7px 14px; font-size: 13px; cursor: pointer; }
+  .btn:hover { background: #eef3ff; }
+  .btn.primary { background: #2b6cf5; border-color: #2b6cf5; color: #fff; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .company { background: #fff; border-radius: 12px; padding: 16px 18px; margin-bottom: 14px;
+             box-shadow: 0 1px 3px rgba(28,35,51,.06); }
+  .company h2 { font-size: 15px; margin-bottom: 4px; }
+  .company .meta { font-size: 12px; color: #8a93a8; margin-bottom: 12px; }
+  .app { display: flex; gap: 14px; padding: 12px 0; border-top: 1px solid #f0f2f8; }
+  .app:first-of-type { border-top: none; }
+  .app .info { flex: 1; min-width: 0; }
+  .app .name { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .app .brief { font-size: 12px; color: #8a93a8; margin-top: 4px;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .app .links { margin-top: 8px; font-size: 12px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .app .links a { color: #2b6cf5; text-decoration: none; }
+  .app .ops { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 150px; }
+  .badge { font-size: 11px; border-radius: 5px; padding: 1px 7px; font-weight: normal; }
+  .badge.confirmed { background: #e3f7e8; color: #1c7c3c; }
+  .badge.high { background: #e8f0ff; color: #2b6cf5; }
+  .badge.suspected { background: #fff3e0; color: #b26a00; }
+  .badge.none { background: #f1f2f6; color: #8a93a8; }
+  .bar { width: 100%; height: 5px; background: #edf0f7; border-radius: 3px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: #2b6cf5; width: 0; transition: width .4s; }
+  .local a { color: #1c7c3c; font-size: 12px; text-decoration: none; }
+  .empty { text-align: center; color: #8a93a8; padding: 60px 0; font-size: 14px; }
+  #toast { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%);
+           background: rgba(28,35,51,.92); color: #fff; font-size: 13px;
+           border-radius: 8px; padding: 9px 18px; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>APP 下载中心</h1>
+    <a class="back" href="/#/admin/enterprise">← 企业信息</a>
+    <div class="actions">
+      <button class="btn" id="btn-enrich">解析全部链接</button>
+      <button class="btn primary" id="btn-reload">刷新</button>
+    </div>
+  </header>
+  <div id="list"><div class="empty">加载中…</div></div>
+</div>
+<div id="toast"></div>
+<script>
+const API = "/api/appdl";
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(t._tm); t._tm=setTimeout(()=>t.classList.remove("show"),2200); }
+function token(){ return localStorage.getItem("token") || ""; }
+async function api(path, opts){
+  opts = opts || {};
+  opts.headers = Object.assign({"Token": token(), "Content-Type":"application/json"}, opts.headers||{});
+  if(opts.body && typeof opts.body!=="string") opts.body = JSON.stringify(opts.body);
+  const r = await fetch(API+path, opts);
+  const j = await r.json().catch(()=>({code:r.status,message:"HTTP "+r.status}));
+  if(j.code!==200) throw new Error(j.message||"请求失败");
+  return j.data;
+}
+const CONF = {confirmed:["confirmed","已确认"],high:["high","高可信"],suspected:["suspected","疑似"],none:["none","未匹配"]};
+function badge(c){ const m=CONF[c]||CONF.none; return '<span class="badge '+m[0]+'">'+m[1]+'</span>'; }
+function fmtSize(n){ if(!n) return ""; return n>1048576? (n/1048576).toFixed(1)+" MB" : (n/1024).toFixed(0)+" KB"; }
+
+async function load(enrich){
+  document.getElementById("list").innerHTML = '<div class="empty">加载中…</div>';
+  try{
+    const data = await api("/apps/?enrich="+(enrich||0));
+    render(data.items||[]);
+  }catch(e){
+    document.getElementById("list").innerHTML = '<div class="empty">'+e.message+'</div>';
+    if(String(e.message).includes("login")||String(e.message).includes("not")) toast("请先登录玄览后再打开本页");
+  }
+}
+function render(items){
+  const root = document.getElementById("list");
+  if(!items.length){ root.innerHTML='<div class="empty">暂无凤鸟 APP 情报 —— 先在企业信息页采集企业</div>'; return; }
+  const groups = {};
+  items.forEach(a=>{ (groups[a.ent_name||"未知公司"]=groups[a.ent_name||"未知公司"]||[]).push(a); });
+  root.innerHTML = Object.entries(groups).map(([ent,apps])=>`
+    <div class="company">
+      <h2>${ent}</h2>
+      <div class="meta">${apps.length} 个应用</div>
+      ${apps.map(a=>appCard(a)).join("")}
+    </div>`).join("");
+  document.querySelectorAll("[data-dl]").forEach(btn=>{
+    btn.onclick = ()=>startDownload(btn.dataset.dl, btn.dataset.idx, btn);
+  });
+}
+function appCard(a){
+  const links=[];
+  if(a.android_url) links.push('<a href="'+a.android_url+'" target="_blank">应用宝·v'+(a.android_version||"?")+(a.android_size?(" · "+a.android_size):"")+'</a>');
+  if(a.ios_url) links.push('<a href="'+a.ios_url+'" target="_blank">App Store</a>');
+  if(a.matched_by==="name_exact"||!a.android_url) links.push('<span style="color:#b26a00">按名称匹配，注意核对开发商</span>');
+  if(a.developer) links.push('<span style="color:#8a93a8">开发商：'+a.developer+'</span>');
+  const ops = a.local
+    ? '<div class="local">✓ 已落盘 '+fmtSize(a.local.size)+'<br><a href="'+API+'/file/?doc_id='+a.local.file_id+'">下载到本机</a></div>'
+    : (a.android_pkg
+        ? '<button class="btn primary" data-dl="'+a.intel_id+'" data-idx="'+a.app_index+'">下载 APK 到服务器</button><div class="bar" style="display:none"><i></i></div><span class="st" style="font-size:11px;color:#8a93a8"></span>'
+        : '<span style="font-size:12px;color:#8a93a8">无 Android 包</span>');
+  return '<div class="app"><div class="info">'
+    +'<div class="name">'+(a.appname||"未命名")+badge(a.confidence)+'</div>'
+    +'<div class="brief">'+(a.brief||"")+(a.download_count?(" · 下载量 "+a.download_count):"")+'</div>'
+    +'<div class="links">'+links.join("")+'</div></div>'
+    +'<div class="ops">'+ops+'</div></div>';
+}
+async function startDownload(intelId, idx, btn){
+  btn.disabled = true; btn.textContent = "排队中…";
+  const card = btn.closest(".ops");
+  const bar = card.querySelector(".bar"), st = card.querySelector(".st");
+  try{
+    const j = await api("/download/", {method:"POST", body:{intel_id:intelId, app_index:+idx, arch:"64"}});
+    btn.style.display="none"; bar.style.display="block";
+    for(let i=0;i<600;i++){
+      await new Promise(r=>setTimeout(r,1500));
+      const job = await api("/job/?job_id="+j.job_id);
+      bar.querySelector("i").style.width = (job.progress||0)+"%";
+      if(job.status==="done"){ toast("下载完成"); load(0); return; }
+      if(job.status==="error"){ throw new Error(job.error||"下载失败"); }
+    }
+    throw new Error("超时");
+  }catch(e){ toast(e.message); btn.disabled=false; btn.textContent="下载 APK 到服务器"; btn.style.display=""; bar.style.display="none"; }
+}
+async function resolveAll(){
+  const btn = document.getElementById("btn-enrich");
+  btn.disabled = true;
+  try{
+    let prev = -1;
+    for(let round=0; round<150; round++){
+      const data = await api("/apps/?enrich=2");
+      const items = data.items||[];
+      const done = items.filter(a=>a.confidence).length;
+      btn.textContent = "解析中 "+done+"/"+items.length;
+      render(items);
+      if(done>=items.length || done===prev) break;   // 全部完成或无进展
+      prev = done;
+    }
+    toast("解析完成");
+  }catch(e){ toast(e.message); }
+  btn.disabled = false; btn.textContent = "解析全部链接";
+}
+document.getElementById("btn-reload").onclick = ()=>load(0);
+document.getElementById("btn-enrich").onclick = resolveAll;
+load(0);
+</script>
+</body>
+</html>

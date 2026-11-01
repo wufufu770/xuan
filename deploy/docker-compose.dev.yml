@@ -1,0 +1,130 @@
+name: arl-dev
+
+services:
+  mongodb:
+    image: mongo:7.0.24
+    container_name: arl_dev_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: arl
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      ARL_MONGO_USER: ${MONGO_APP_USER}
+      ARL_MONGO_PASSWORD: ${MONGO_APP_PASSWORD}
+      ARL_ADMIN_USER: ${ARL_ADMIN_USER}
+      ARL_ADMIN_PASSWORD_HASH: ${ARL_ADMIN_PASSWORD_HASH}
+    volumes:
+      - arl_dev_mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval 'db.adminCommand({ping:1}).ok' | grep 1"]
+      interval: 10s
+      timeout: 12s
+      retries: 30
+      start_period: 20s
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: arl_dev_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST}
+    volumes:
+      - arl_dev_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 12s
+      retries: 30
+      start_period: 20s
+
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: arl_dev_web
+    restart: unless-stopped
+    environment:
+      ROLE: web
+    env_file:
+      - dev-credentials.env
+    ports:
+      # 会话窗口 noVNC 直连端口（M3 窗口登录），iframe 按主机名直连
+      - "6100-6102:6100-6102"
+    volumes:
+      - ./dev-config.yaml:/opt/ARL/app/config.yaml
+      - arl_dev_logs:/opt/ARL/logs
+      - arl_dev_session_pool:/opt/ARL/data/session_pool
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "code=$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5013/api/stats/summary/); test \"$$code\" = \"401\" -o \"$$code\" = \"200\""]
+      interval: 15s
+      timeout: 12s
+      retries: 30
+      start_period: 30s
+
+  worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: arl_dev_worker
+    restart: unless-stopped
+    environment:
+      ROLE: worker
+      ARL_QUEUES: arltask,arlheavy_top,arlheavy_full,arlpost,arlpost_retry,arlcollision,arlgithub
+      ARL_CONCURRENCY: "2"
+    env_file:
+      - dev-credentials.env
+    volumes:
+      - ./dev-config.yaml:/opt/ARL/app/config.yaml
+      - arl_dev_logs:/opt/ARL/logs
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  scheduler:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: arl_dev_scheduler
+    restart: unless-stopped
+    environment:
+      ROLE: scheduler
+    env_file:
+      - dev-credentials.env
+    volumes:
+      - ./dev-config.yaml:/opt/ARL/app/config.yaml
+      - arl_dev_logs:/opt/ARL/logs
+      - arl_dev_session_pool:/opt/ARL/data/session_pool
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: arl_dev_nginx
+    restart: unless-stopped
+    ports:
+      # 对宿主机 0.0.0.0 发布：宿主机/局域网可直接访问
+      - "5003:5003"
+    volumes:
+      - ./nginx.dev.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../docker/xuanlan:/usr/share/nginx/xuanlan:ro
+    depends_on:
+      - web
+
+volumes:
+  arl_dev_mongodb_data:
+  arl_dev_rabbitmq_data:
+  arl_dev_logs:
+  arl_dev_session_pool:

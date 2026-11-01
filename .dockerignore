@@ -1,0 +1,13 @@
+.git
+.venv
+.mimosa
+__pycache__
+*.pyc
+logs
+data
+katana
+app/tmp*
+app/config.yaml
+app/config.yaml.bak-local
+.pytest_cache
+docker/xuanlan/assets

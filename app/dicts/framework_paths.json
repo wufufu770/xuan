@@ -1,0 +1,82 @@
+{
+  "spring": {
+    "finger_keywords": ["Spring", "Spring Boot", "Spring Framework", "spring-boot"],
+    "paths": [
+      "/actuator", "/actuator/env", "/actuator/heapdump", "/actuator/mappings",
+      "/actuator/configprops", "/actuator/beans", "/env", "/heapdump",
+      "/swagger-ui.html", "/swagger-ui/index.html", "/v2/api-docs", "/v3/api-docs",
+      "/doc.html", "/druid/index.html", "/druid/login.html"
+    ]
+  },
+  "nacos": {
+    "finger_keywords": ["Nacos", "nacos"],
+    "paths": ["/nacos", "/nacos/", "/nacos/index.html", "/nacos/v1/auth/users"]
+  },
+  "tomcat": {
+    "finger_keywords": ["Tomcat", "Apache Tomcat"],
+    "paths": ["/manager/html", "/host-manager/html", "/manager/status", "/examples/", "/docs/"]
+  },
+  "weblogic": {
+    "finger_keywords": ["WebLogic", "weblogic"],
+    "paths": ["/console", "/console/login/LoginForm.jsp", "/uddiexplorer/", "/_async/AsyncResponseService"]
+  },
+  "jenkins": {
+    "finger_keywords": ["Jenkins", "jenkins"],
+    "paths": ["/jenkins/", "/script", "/asynchPeople/", "/people/"]
+  },
+  "grafana": {
+    "finger_keywords": ["Grafana", "grafana"],
+    "paths": ["/grafana/", "/api/health", "/api/dashboards/home", "/login"]
+  },
+  "kibana": {
+    "finger_keywords": ["Kibana", "kibana"],
+    "paths": ["/kibana/", "/app/kibana", "/api/status"]
+  },
+  "elasticsearch": {
+    "finger_keywords": ["Elasticsearch", "elasticsearch"],
+    "paths": ["/_cat/indices", "/_cluster/health", "/_all/_search?size=1"]
+  },
+  "harbor": {
+    "finger_keywords": ["Harbor", "harbor"],
+    "paths": ["/harbor/", "/api/v2.0/systeminfo", "/api/systeminfo"]
+  },
+  "nexus": {
+    "finger_keywords": ["Nexus", "nexus"],
+    "paths": ["/nexus/", "/service/rest/v1/status", "/service/local/status"]
+  },
+  "gitlab": {
+    "finger_keywords": ["GitLab", "gitlab"],
+    "paths": ["/api/v4/version", "/users/sign_in", "/help"]
+  },
+  "zabbix": {
+    "finger_keywords": ["Zabbix", "zabbix"],
+    "paths": ["/zabbix/", "/api_jsonrpc.php"]
+  },
+  "phpmyadmin": {
+    "finger_keywords": ["phpMyAdmin", "phpmyadmin"],
+    "paths": ["/phpmyadmin/", "/pma/", "/phpMyAdmin/"]
+  },
+  "minio": {
+    "finger_keywords": ["MinIO", "minio"],
+    "paths": ["/minio/", "/minio/health/live"]
+  },
+  "shiro": {
+    "finger_keywords": ["Shiro", "shiro", "rememberMe"],
+    "paths": ["/login", "/admin/login", "/doLogin"]
+  },
+  "jira": {
+    "finger_keywords": ["Jira", "jira"],
+    "paths": ["/secure/Dashboard.jspa", "/rest/api/2/serverInfo", "/status"]
+  },
+  "confluence": {
+    "finger_keywords": ["Confluence", "confluence"],
+    "paths": ["/login.action", "/rest/api/about", "/status"]
+  },
+  "webfront": {
+    "finger_keywords": ["Nginx", "nginx", "IIS", "Microsoft IIS", "Apache"],
+    "paths": [
+      "/admin/", "/admin/login", "/manager/", "/console/", "/api/", "/api-docs",
+      "/.git/config", "/.env", "/robots.txt", "/crossdomain.xml", "/WEB-INF/web.xml"
+    ]
+  }
+}

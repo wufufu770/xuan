@@ -1,0 +1,3080 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>玄览控制台</title>
+<link rel="stylesheet" href="/vendor/open-props.min.css"/>
+<script src="/vendor/gsap.min.js"></script>
+<style>
+/* 自托管开源字体（@fontsource/Inter、@fontsource/JetBrains Mono，OFL 许可） */
+@font-face{
+  font-family:"Inter Variable";font-style:normal;font-weight:100 900;font-display:swap;
+  src:url("/fonts/inter-var.woff2") format("woff2");
+}
+@font-face{
+  font-family:"JetBrains Mono Variable";font-style:normal;font-weight:100 800;font-display:swap;
+  src:url("/fonts/jetbrains-mono-var.woff2") format("woff2");
+}
+:root{
+  /* GitHub Primer Dark 配色 */
+  --bg:#0d1117; --panel:#161b22; --panel2:#21262d; --line:#30363d; --line2:#3d444d;
+  --fg:#e6edf3; --dim:#8b949e; --dim2:#6e7681;
+  --acc:#4493f8; --acc2:#1f6feb; --ok:#3fb950; --warn:#d29922; --bad:#f85149;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Inter Variable",-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+     background:var(--bg);color:var(--fg);font-size:14px;line-height:1.5;
+     font-feature-settings:"cv05" 1,"ss01" 1;-webkit-font-smoothing:antialiased}
+a{color:var(--acc);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font-family:inherit}
+input,select,textarea{background:var(--bg);border:1px solid var(--line);color:var(--fg);
+  border-radius:6px;padding:0 12px;height:30px;font-size:13px;outline:none;
+  transition:border-color var(--speed-2,.15s) var(--ease-2,cubic-bezier(.25,.1,.25,1)),
+             box-shadow var(--speed-2,.15s) var(--ease-2,cubic-bezier(.25,.1,.25,1))}
+textarea{height:auto;padding:8px 12px}
+input:focus,select:focus,textarea:focus{border-color:var(--acc);
+  box-shadow:0 0 0 3px rgba(68,147,248,.25)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+     height:30px;padding:0 14px;background:var(--panel2);
+     border:1px solid rgba(240,246,252,.1);color:var(--fg);border-radius:6px;
+     font-size:13px;font-weight:500;letter-spacing:.1px;cursor:pointer;
+     transition:background var(--speed-2,.15s) var(--ease-2,cubic-bezier(.25,.1,.25,1)),
+                border-color var(--speed-2,.15s) var(--ease-2,cubic-bezier(.25,.1,.25,1)),
+                transform var(--speed-1,.1s) var(--ease-2,cubic-bezier(.25,.1,.25,1))}
+.btn:hover{background:#262c36;border-color:#8b949e;text-decoration:none}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--acc2);border-color:rgba(240,246,252,.1);color:#fff}
+.btn.primary:hover{background:#388bfd}
+.btn.danger{color:var(--bad);border-color:rgba(240,246,252,.1)}
+.btn.danger:hover{border-color:var(--bad);background:#262c36}
+.btn.sm{height:26px;padding:0 10px;font-size:12px}
+.btn:disabled{opacity:.45;cursor:default}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+::-webkit-scrollbar-track{background:transparent}
+/* 登录 */
+#login{display:flex;align-items:center;justify-content:center;height:100vh;
+       background:radial-gradient(1200px 600px at 50% -10%,#12233d,var(--bg))}
+#login .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+             padding:36px 40px;width:340px}
+#login h1{font-size:18px;margin-bottom:24px;letter-spacing:2px;font-weight:600}
+#login input{width:100%;margin-bottom:14px;padding:7px 12px}
+#login button{width:100%;padding:7px}
+/* 布局 */
+#app{display:flex;min-height:100vh}
+aside{width:212px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);
+      padding:14px 10px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+aside .logo{font-size:14px;letter-spacing:2px;padding:6px 10px 14px;font-weight:600}
+aside .group{font-size:11px;color:var(--dim2);padding:16px 10px 5px;letter-spacing:3px;
+             pointer-events:none;user-select:none;line-height:1;font-weight:500}
+aside nav a{display:block;padding:5px 10px;margin:1px 0;color:var(--fg);font-size:13.5px;
+            border-radius:6px;text-decoration:none;transition:background .12s}
+aside nav a:hover{background:var(--panel2);text-decoration:none}
+aside nav a.active{background:var(--acc2);color:#fff;font-weight:500}
+aside .me{margin-top:auto;padding:12px 10px 2px;border-top:1px solid var(--line);font-size:13px;color:var(--dim)}
+aside .me .role{color:var(--warn)}
+aside .me button{margin-top:8px;width:100%}
+main{flex:1;padding:22px 28px 60px;min-width:0}
+h2.page{font-size:19px;font-weight:600;margin-bottom:14px;padding-bottom:10px;
+        border-bottom:1px solid var(--line)}
+.row{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.spacer{margin-left:auto}
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+/* 表格 */
+.tblwrap{background:var(--panel);border:1px solid var(--line);border-radius:6px;
+         overflow:auto;max-height:calc(100vh - 230px)}
+table{width:100%;border-collapse:collapse}
+th{font-size:12px;color:var(--dim);text-align:left;padding:8px 14px;font-weight:500;
+   border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);white-space:nowrap}
+th.sortable{cursor:pointer} th.sortable:hover{color:var(--acc)}
+td{padding:7px 14px;border-bottom:1px solid #21262d;font-size:13px;vertical-align:top}
+tr:hover td{background:#1c2128}
+.mono{font-family:"JetBrains Mono Variable",var(--mono);font-size:13px}
+.dim{color:var(--dim)} .dim2{color:var(--dim2)}
+/* 卡片 */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(4,1fr)} .g6{grid-template-columns:repeat(6,1fr)} .g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+.stat .v{font-size:22px;font-weight:600;font-family:var(--mono)}
+.stat .k{font-size:13px;color:var(--dim);margin-top:2px}
+.stat .d{font-size:13px;margin-top:3px}
+.up{color:var(--ok)} .down{color:var(--bad)} .flat{color:var(--dim)}
+/* 徽章 */
+.badge{border-radius:10px;padding:1px 9px;font-size:12px;display:inline-block;font-weight:500}
+.b-ok{background:#12261e;color:var(--ok)} .b-bad{background:#25171c;color:var(--bad)}
+.b-warn{background:#242214;color:var(--warn)} .b-dim{background:#1c2128;color:var(--dim)}
+.b-info{background:#121d2f;color:var(--acc)}
+.sev-critical,.sev-high{color:var(--bad)} .sev-medium{color:var(--warn)} .sev-low{color:var(--ok)}
+/* 分页 */
+.pager{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--dim);margin-top:10px}
+.pager .btn.sm{padding:3px 10px}
+/* 抽屉 */
+#drawer{position:fixed;right:0;top:0;bottom:0;width:520px;max-width:94vw;background:var(--panel);
+        border-left:1px solid var(--line);padding:22px;overflow-y:auto;z-index:60;
+        box-shadow:-12px 0 32px rgba(1,4,9,.6);
+        transform:translateX(100%)}
+#drawer.open{transform:none}
+#drawer h3{font-size:15px;margin-bottom:14px;font-weight:600}
+#drawer .close{float:right;cursor:pointer;color:var(--dim);font-size:18px}
+#drawer .close:hover{color:var(--fg)}
+#drawer h4{font-size:12px;color:var(--dim);margin:16px 0 6px;font-weight:500;letter-spacing:1px}
+.dl{font-size:13px;line-height:2}
+.dl b{color:var(--dim);font-weight:500;display:inline-block;width:92px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.chip{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:1px 10px;font-size:12px}
+.chip a{color:var(--dim);margin-left:5px}
+.chip a:hover{color:var(--bad)}
+/* 阶段时间线 */
+.tl{border-left:2px solid var(--line);margin-left:8px;padding-left:16px}
+.tl .item{position:relative;padding:4px 0;font-size:13px}
+.tl .item::before{content:"";position:absolute;left:-22px;top:12px;width:8px;height:8px;
+                  border-radius:50%;background:var(--dim2)}
+.tl .item.done::before{background:var(--ok)}
+.tl .item.error::before{background:var(--bad)}
+.tl .item.doing::before{background:var(--acc)}
+/* 图表 */
+.legend{display:flex;gap:14px;font-size:13px;color:var(--dim);margin:6px 0 10px;flex-wrap:wrap}
+.legend .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.bar-row{display:flex;align-items:center;gap:10px;font-size:13px;margin:5px 0}
+.bar-row .name{width:150px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-row .bar{flex:1;height:14px;background:var(--panel2);border-radius:4px;overflow:hidden}
+.bar-row .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc2),var(--acc));border-radius:4px}
+.bar-row .num{width:56px;text-align:right;font-family:var(--mono);font-size:13px}
+/* 表单 */
+.frm{margin:4px 0}
+.frm label{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--fg);padding:3px 0;cursor:pointer}
+.frm .col{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+/* AI 助手悬浮窗与会话页 */
+#ai-fab{position:fixed;right:22px;bottom:22px;z-index:70;height:38px;padding:0 16px;
+        border-radius:19px;background:var(--acc2);color:#fff;border:0;cursor:pointer;
+        font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(31,111,235,.45)}
+#ai-fab:hover{background:#388bfd}
+#ai-panel{position:fixed;right:22px;bottom:68px;width:400px;height:540px;max-height:82vh;
+          background:var(--panel);border:1px solid var(--line);border-radius:10px;z-index:70;
+          display:none;flex-direction:column;box-shadow:0 16px 48px rgba(1,4,9,.6);overflow:hidden}
+#ai-panel.open{display:flex}
+.ai-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.ai-msgs{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.ai-msg{max-width:88%;padding:8px 12px;border-radius:10px;font-size:13px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.ai-msg.user{align-self:flex-end;background:var(--acc2);color:#fff}
+.ai-msg.bot{align-self:flex-start;background:var(--panel2);border:1px solid var(--line)}
+.ai-msg .tool-step{font-size:12px;color:var(--dim);border-left:2px solid var(--acc);padding:2px 0 2px 8px;margin:4px 0}
+.ai-msg .tool-step b{color:var(--acc);font-weight:500}
+.ai-input{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+.ai-input textarea{flex:1;height:44px;resize:none}
+.ai-conv-item{display:block;padding:7px 12px;border-radius:6px;color:var(--fg);cursor:pointer;font-size:13px;
+              overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ai-conv-item:hover{background:var(--panel2)}
+.ai-conv-item.active{background:var(--panel2);border-left:2px solid var(--acc)}
+/* 会话窗口登录弹窗 */
+#win-modal{position:fixed;inset:0;background:rgba(1,4,9,.72);z-index:80;display:none;
+           align-items:center;justify-content:center}
+#win-modal .box{width:92vw;height:88vh;background:var(--panel);border:1px solid var(--line);
+                border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
+.win-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+#win-iframe{flex:1;border:0;background:#0d1117}
+/* 其他 */
+.empty{color:var(--dim2);text-align:center;padding:46px 0}
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:var(--panel2);
+       border:1px solid var(--line);color:var(--fg);font-size:13px;border-radius:6px;
+       padding:10px 20px;opacity:0;transition:opacity .3s;z-index:99;box-shadow:0 8px 24px rgba(1,4,9,.5)}
+#toast.show{opacity:1}
+.chipbtn{cursor:pointer}
+.chk{display:flex;gap:5px;align-items:center;font-size:13px;color:var(--dim)}
+</style>
+</head>
+<body>
+
+<div id="login" style="display:none">
+  <div class="card">
+    <h1>玄览控制台</h1>
+    <input type="text" id="li-user" placeholder="用户名" autocomplete="username"/>
+    <input type="password" id="li-pass" placeholder="密码" autocomplete="current-password"/>
+    <button class="btn primary" onclick="doLogin()">登 录</button>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <aside>
+    <div class="logo">玄览控制台</div>
+    <div class="group">总览</div>
+    <nav><a href="#/overview">看板</a></nav>
+    <div class="group">资产</div>
+    <nav>
+      <a href="#/assets">资产检索</a>
+      <a href="#/scopes">资产组</a>
+      <a href="#/enterprise">企业情报</a>
+    </nav>
+    <div class="group">任务</div>
+    <nav>
+      <a href="#/tasks">任务管理</a>
+      <a href="#/policy">任务策略</a>
+      <a href="#/schedules">计划任务</a>
+    </nav>
+    <div class="group">监控</div>
+    <nav>
+      <a href="#/diff">变化历史</a>
+      <a href="#/reports">报告中心</a>
+    </nav>
+    <div class="group">风险</div>
+    <nav><a href="#/risks">风险中心</a></nav>
+    <div class="group">引擎</div>
+    <nav>
+      <a href="#/engines">扫描引擎</a>
+      <a href="#/fingerprints">指纹库</a>
+      <a href="#/poc">POC 库</a>
+    </nav>
+    <div class="group">数据源</div>
+    <nav>
+      <a href="#/sessions">会话池</a>
+      <a href="#/sources">API 接入</a>
+    </nav>
+    <div class="group">智能</div>
+    <nav><a href="#/assistant">智能助手</a></nav>
+    <div class="group">系统</div>
+    <nav>
+      <a href="#/settings">通知设置</a>
+      <a href="#/ai">AI 配置</a>
+      <a href="#/users" id="nav-users" style="display:none">用户管理</a>
+    </nav>
+    <div class="me">
+      <div id="me-name">—</div>
+      <div>角色 <span class="role" id="me-role">—</span></div>
+      <button class="btn" onclick="logout()">退出登录</button>
+    </div>
+  </aside>
+  <main id="view"></main>
+</div>
+
+<div id="drawer"><span class="close" onclick="closeDrawer()">✕</span><div id="drawer-body"></div></div>
+<div id="toast"></div>
+
+<button id="ai-fab" onclick="aiToggle()">智能助手</button>
+<div id="ai-panel">
+  <div class="ai-head"><b style="font-size:14px">玄览智能助手</b>
+    <span class="dim2" style="font-size:12px" id="ai-conv-title-float">新会话</span>
+    <span class="spacer"></span>
+    <button class="btn sm" onclick="agNew()">新会话</button>
+    <button class="btn sm" onclick="aiToggle()">收起</button></div>
+  <div class="ai-msgs" id="ai-msgs-float"><div class="dim2" style="margin:auto">布置任务给助手——它可以直接调用平台功能（检索资产/下发任务/查风险/生成报告…）</div></div>
+  <div class="ai-input">
+    <textarea id="ai-input-float" placeholder="如：看看 example.com 的风险并生成报告"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();agSend('float')}"></textarea>
+    <button class="btn primary" onclick="agSend('float')">发送</button></div>
+</div>
+
+<div id="win-modal">
+  <div class="box">
+    <div class="win-head"><b id="win-title">窗口登录</b>
+      <span class="dim2" style="font-size:12px">在右侧浏览器中完成登录，登录成功后点「完成并抓取」</span>
+      <span class="spacer"></span>
+      <button class="btn primary" id="win-capture-btn" onclick="spCapture()">完成并抓取</button>
+      <button class="btn" onclick="spCloseWindow()">关闭窗口</button></div>
+    <iframe id="win-iframe" allow="clipboard-read; clipboard-write"></iframe>
+  </div>
+</div>
+
+<script>
+/* ============================ 基础 ============================ */
+const $ = s => document.querySelector(s);
+const API = "/api";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function toast(msg){
+  const el=$("#toast"); el.textContent=msg;
+  if (window.gsap){
+    gsap.killTweensOf(el);
+    el.classList.add("show");
+    gsap.fromTo(el,{y:10,opacity:0,scale:.96},
+      {y:0,opacity:1,scale:1,duration:.3,ease:"back.out(1.6)"});
+    gsap.to(el,{opacity:0,y:6,duration:.25,delay:2.5,ease:"power2.in",
+      onComplete:()=>el.classList.remove("show")});
+  } else {
+    el.classList.add("show");
+    setTimeout(()=>el.classList.remove("show"),2800);
+  }
+}
+function token(){ return localStorage.getItem("token") || ""; }
+function myRole(){ return localStorage.getItem("role") || "admin"; }
+function myUser(){ return localStorage.getItem("user") || ""; }
+async function api(path, opts={}){
+  opts.headers = Object.assign({"Token": token()}, opts.headers||{});
+  if (opts.json){ opts.headers["Content-Type"]="application/json";
+                  opts.body = JSON.stringify(opts.json); delete opts.json; }
+  const r = await fetch(API+path, opts);
+  let body = {}; try{ body = await r.json(); }catch(e){}
+  if (body.code === 401){ showLogin(); throw new Error("未登录"); }
+  return body;
+}
+async function fetchRaw(path){
+  const r = await fetch(API+path, {headers:{"Token": token()}});
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r;
+}
+/* GSAP 初始态归一化：把 CSS 起始位移(translateX(100%))的像素解析清零，
+   此后抽屉统一由 xPercent 驱动，避免 px+xPercent 叠加导致卡位 */
+if (window.gsap) gsap.set("#drawer", {x:0, xPercent:100});
+
+function openDrawer(html){ $("#drawer-body").innerHTML = html;
+  $("#drawer").classList.add("open");
+  if (window.gsap) gsap.to("#drawer", {xPercent:0, duration:.34, ease:"power3.out",
+    overwrite:true});
+  else $("#drawer").style.transform = "none"; }
+function closeDrawer(){
+  if (window.gsap){
+    gsap.to("#drawer", {xPercent:100, duration:.26, ease:"power3.in",
+      onComplete:()=>$("#drawer").classList.remove("open")});
+  } else $("#drawer").classList.remove("open"); }
+/* 取列表数据（兼容三种返回形态：data.items / 顶层 items / data 为数组） */
+function pickList(body){
+  const d = body && body.data ? body.data : body;
+  if (Array.isArray(d)) return {items: d, total: d.length};
+  if (!d) return {items: [], total: 0};
+  const items = d.items || d.rows || [];
+  return {items, total: (d.total != null ? d.total : items.length)};
+}
+function idTs(id){ try{ return parseInt(String(id).slice(0,8),16)*1000; }catch(e){ return 0; } }
+function csvDownload(filename, headers, rows){
+  const escCell = v => '"' + String(v ?? "").replace(/"/g,'""') + '"';
+  const lines = [headers.map(escCell).join(",")].concat(
+    rows.map(r => r.map(escCell).join(",")));
+  const blob = new Blob(["\ufeff" + lines.join("\n")], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+}
+function fmtInterval(sec){
+  if (sec == null || sec === "") return "—";
+  if (sec % 86400 === 0) return (sec/86400) + " 天";
+  if (sec % 3600 === 0) return (sec/3600) + " 小时";
+  return sec + " 秒";
+}
+function jobBadge(st){
+  const s = String(st||"").toLowerCase();
+  if (s === "running" || s === "scheduled") return '<span class="badge b-ok">'+esc(st)+'</span>';
+  if (s === "stop" || s === "stopped") return '<span class="badge b-dim">'+esc(st)+'</span>';
+  return '<span class="badge b-info">'+esc(st||"—")+'</span>';
+}
+/* 表格客户端排序（当前页） */
+let sortState = {};
+function sortedRows(rows, tableKey){
+  const st = sortState[tableKey];
+  if (!st) return rows;
+  const sorted = [...rows].sort((a,b)=>{
+    const av = String(a[st.col] ?? ""), bv = String(b[st.col] ?? "");
+    return st.dir * av.localeCompare(bv, undefined, {numeric:true});
+  });
+  return sorted;
+}
+function sortIcon(tableKey, col){
+  const st = sortState[tableKey];
+  if (!st || st.col !== col) return "";
+  return st.dir > 0 ? " ▲" : " ▼";
+}
+function pagerHtml(tableKey, page, size, total){
+  const pages = Math.max(1, Math.ceil(total / size));
+  return `<div class="pager">
+    <button class="btn sm" ${page<=1?"disabled":""} onclick="goPage('${tableKey}',${page-1})">上一页</button>
+    第 ${page} / ${pages} 页 · 共 ${total} 条
+    <button class="btn sm" ${page>=pages?"disabled":""} onclick="goPage('${tableKey}',${page+1})">下一页</button>
+    <span class="spacer"></span>
+  </div>`;
+}
+/* 分页统一跳转入口（pagerHtml 生成的 goPage 调用按表路由） */
+const PAGE_LOADERS = {
+  asset: p => loadAssets(p),
+  tk:    p => { taskPage = p; loadTasks(); },
+  risk:  p => { riskPage = p; fetchRisks(); },
+  poc:   p => { pocPage = p; loadPoc(); },
+};
+function goPage(key, page){
+  const fn = PAGE_LOADERS[key];
+  if (fn) fn(page);
+}
+
+/* ============================ 登录 ============================ */
+function showLogin(){ $("#login").style.display="flex"; $("#app").style.display="none"; }
+async function doLogin(){
+  const r = await fetch(API+"/user/login",{method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({username:$("#li-user").value.trim(),
+                         password:$("#li-pass").value})});
+  const body = await r.json();
+  if (body.code !== 200){ toast(body.message || "登录失败"); return; }
+  localStorage.setItem("token", body.data.token);
+  localStorage.setItem("role", body.data.role || "admin");
+  localStorage.setItem("user", body.data.username);
+  boot();
+}
+function logout(){
+  fetch(API+"/user/logout",{method:"POST",headers:{"Token":token()}});
+  localStorage.clear(); showLogin();
+}
+
+/* ============================ 路由 ============================ */
+const ROUTES = {};
+function nav(){
+  const view = (location.hash || "#/overview").replace("#/","").split("?")[0];
+  document.querySelectorAll("aside nav a").forEach(a=>
+    a.classList.toggle("active", a.getAttribute("href") === "#/"+view));
+  $("#me-name").textContent = myUser();
+  $("#me-role").textContent = myRole();
+  $("#nav-users").style.display = myRole()==="admin" ? "" : "none";
+  (ROUTES[view] || ROUTES.overview)();
+}
+window.addEventListener("hashchange", ()=>{ if(token()) nav(); });
+function go(hash){ location.hash = hash; }
+
+/* 页面切换动效（GSAP）：#view 内容变更后轻微上移淡入（去抖合并渐进渲染） */
+let _viewTweenTimer = null;
+const _viewObserver = new MutationObserver(()=>{
+  if (!window.gsap) return;
+  clearTimeout(_viewTweenTimer);
+  _viewTweenTimer = setTimeout(()=>{
+    gsap.fromTo("#view", {opacity:0, y:10},
+      {opacity:1, y:0, duration:.32, ease:"power2.out", overwrite:true});
+  }, 60);
+});
+
+function boot(){
+  if (!token()){ showLogin(); return; }
+  $("#login").style.display="none"; $("#app").style.display="flex";
+  if (window.gsap) gsap.fromTo("#app", {opacity:0}, {opacity:1, duration:.4, ease:"power2.out"});
+  _viewObserver.observe($("#view"), {childList:true});
+  nav();
+}
+
+/* ============================ 看板 ============================ */
+let trendChart = null;
+ROUTES.overview = async function(){
+  $("#view").innerHTML = "<h2 class='page'>看板</h2><div class='empty'>加载中…</div>";
+  const [statsB, taskB, vulnB, ipB, siteB] = await Promise.all([
+    api("/stats/summary/"),
+    api("/task/?size=1000"),
+    api("/vuln/?size=1000"),
+    api("/ip/?size=500"),
+    api("/site/?size=500"),
+  ]);
+  const s = statsB.data || {};
+  const h = s.health || {};
+  const tr = h.tasks_recent || {};
+  const rate = tr.success_rate != null ? (tr.success_rate*100).toFixed(1)+"%" : "—";
+  const feng = h.fengniao_token || {};
+  const fengLeft = feng.expires_in_hours != null ? feng.expires_in_hours.toFixed(1)+"h" : "—";
+  const fengBadge = !feng.configured ? '<span class="badge b-dim">未配置</span>'
+    : (feng.expires_in_hours != null && feng.expires_in_hours < 24
+       ? '<span class="badge b-bad">即将过期</span>' : '<span class="badge b-ok">正常</span>');
+  const stat = (v,k,d)=>`<div class="card stat"><div class="v">${v}</div><div class="k">${k}</div><div class="d">${d||""}</div></div>`;
+
+  /* 近 14 天任务提交趋势（ObjectId 时间戳） */
+  const tasks = pickList(taskB).items;
+  const days = [];
+  for (let i=13;i>=0;i--){
+    const d = new Date(Date.now()-i*86400000);
+    days.push(d.toISOString().slice(5,10));
+  }
+  const perDay = days.map(()=>0);
+  tasks.forEach(t=>{
+    const d = new Date(idTs(t._id)).toISOString().slice(5,10);
+    const idx = days.indexOf(d);
+    if (idx >= 0) perDay[idx] += 1;
+  });
+  const maxT = Math.max(1, ...perDay);
+
+  /* 漏洞严重度 donut（优先 health 权威聚合，缺失时用样本计数） */
+  const vulns = pickList(vulnB).items;
+  let sevCount = null;
+  if (h.vuln_by_severity) sevCount = h.vuln_by_severity;
+  else {
+    sevCount = {critical:0, high:0, medium:0, low:0};
+    vulns.forEach(v=>{
+      const key = String(v.severity||"").toLowerCase();
+      if (key in sevCount) sevCount[key] += 1;
+    });
+  }
+
+  /* Top 端口 / 指纹 */
+  const ips = pickList(ipB).items;
+  const portCount = {};
+  ips.forEach(i=> (i.port_info||[]).forEach(p=>{
+    const pid = p.port_id; portCount[pid] = (portCount[pid]||0)+1;
+  }));
+  const topPorts = Object.entries(portCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const sites = pickList(siteB).items;
+  const fingerCount = {};
+  sites.forEach(sp=> (sp.finger||[]).forEach(f=>{
+    const name = f.name || String(f);
+    if (name) fingerCount[name] = (fingerCount[name]||0)+1;
+  }));
+  const topFingers = Object.entries(fingerCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  const statCard = (v,k)=>`<div class="card stat"><div class="v">${v}</div><div class="k">${k}</div></div>`;
+  $("#view").innerHTML = `
+    <h2 class="page">看板</h2>
+    <div class="grid g4">
+      ${statCard(s.domains,"域名")}${statCard(s.sites,"站点")}${statCard(s.ips,"IP")}
+      ${statCard(s.vulns,"漏洞")}
+    </div>
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card">
+        <div style="margin-bottom:10px">近 14 天任务提交</div>
+        <svg id="trend-svg" width="100%" height="150" viewBox="0 0 560 150" preserveAspectRatio="none"></svg>
+      </div>
+      <div class="card">
+        <div style="margin-bottom:10px">漏洞严重度分布</div>
+        <div id="sev-donut"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div style="margin-bottom:8px">近期任务${s.running_tasks?`（运行中 ${s.running_tasks}）`:""}</div>
+      <div id="ov-tasks"></div>
+    </div>
+    <details style="margin-top:16px">
+      <summary style="cursor:pointer;color:var(--acc)">健康指标与统计分布</summary>
+      <div class="grid g3" style="margin-top:12px">
+        <div class="card stat"><div class="v" style="font-size:18px">${rate}</div><div class="k">近期任务成功率</div></div>
+        <div class="card stat"><div class="v" style="font-size:18px">${h.api_token_active ?? "—"}</div><div class="k">活跃会话</div></div>
+        <div class="card stat"><div class="v" style="font-size:18px">${fengLeft} ${fengBadge}</div><div class="k">凤鸟 token 剩余</div></div>
+      </div>
+      <div class="grid g2" style="margin-top:12px">
+        <div class="card"><div style="margin-bottom:8px">开放最多的端口</div><div id="top-ports"></div></div>
+        <div class="card"><div style="margin-bottom:8px">Top 指纹</div><div id="top-fingers"></div></div>
+      </div>
+    </details>`;
+
+  /* 统计数字滚动（GSAP，仅纯整数值） */
+  if (window.gsap){
+    document.querySelectorAll(".stat .v").forEach(el=>{
+      const v = el.textContent.trim();
+      if (!/^\d+$/.test(v)) return;
+      const obj = {n:0};
+      gsap.to(obj, {n:parseInt(v,10), duration:.7, ease:"power2.out",
+        onUpdate:()=>{ el.textContent = String(Math.round(obj.n)); }});
+    });
+  }
+
+  /* 趋势折线 */
+  const svg = $("#trend-svg");
+  const W=560, H=150, pad=24;
+  const step = (W-pad*2)/Math.max(perDay.length-1,1);
+  const pts = perDay.map((v,i)=>[pad+i*step, H-pad-(v/maxT)*(H-pad*2)]);
+  svg.innerHTML =
+    pts.map(([x,y])=>`<line x1="${x}" y1="${H-pad}" x2="${x}" y2="${y}" stroke="#2b3a55" stroke-width="6"></line>`).join("") +
+    `<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="#4d8dff" stroke-width="2"/>` +
+    pts.map(([x,y],i)=>`<circle cx="${x}" cy="${y}" r="3" fill="#4d8dff"><title>${days[i]}: ${perDay[i]}</title></circle>`).join("") +
+    [0, .5, 1].map(f=>`<text x="${pad}" y="${H-pad-(f*(H-pad*2))+12}" fill="#57607a" font-size="10">${Math.round(maxT*f)}</text>`).join("") +
+    days.map((d,i)=> i%2===0 ? `<text x="${pts[i][0]}" y="${H-4}" fill="#57607a" font-size="9" text-anchor="middle">${d}</text>` : "").join("");
+
+  /* donut */
+  const total = Object.values(sevCount).reduce((a,b)=>a+b,0);
+  const segs = [["critical",sevCount.critical,"#e05656"],["high",sevCount.high,"#e8734d"],
+                ["medium",sevCount.medium,"#e8b23a"],["low",sevCount.low,"#3fbf72"]];
+  let offset = 0; const C = 2*Math.PI*52;
+  let circles = "";
+  if (total){
+    segs.forEach(([name,val,color])=>{
+      if (!val) return;
+      const frac = val/total, len = frac*C;
+      circles += `<circle r="52" cx="70" cy="70" fill="none" stroke="${color}" stroke-width="16"
+        stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-offset}" transform="rotate(-90 70 70)"/>`;
+      offset += len;
+    });
+  } else {
+    circles = `<circle r="52" cx="70" cy="70" fill="none" stroke="#242d3d" stroke-width="16"/>`;
+  }
+  $("#sev-donut").innerHTML = `<svg width="140" height="140">${circles}
+      <text x="70" y="66" text-anchor="middle" fill="#d9e1ee" font-size="22" font-weight="600">${total}</text>
+      <text x="70" y="86" text-anchor="middle" fill="#7f8aa0" font-size="11">漏洞</text></svg>
+    <div class="legend" style="margin-top:4px">${segs.map(([n,v,c])=>
+      `<span><i class="dot" style="background:${c}"></i>${n} ${v}</span>`).join("")}</div>`;
+
+  const bars = (items)=> items.length ? items.map(([name,val])=>`
+      <div class="bar-row"><span class="name mono" title="${esc(name)}">${esc(name)}</span>
+      <div class="bar"><i style="width:${Math.round(val/Math.max(...items.map(x=>x[1]))*100)}%"></i></div>
+      <span class="num">${val}</span></div>`).join("") : '<div class="dim2">—</div>';
+  $("#top-ports").innerHTML = bars(topPorts.map(([p,v])=>[String(p)+"端口", v]));
+  $("#top-fingers").innerHTML = bars(topFingers);
+
+  /* 近期任务 */
+  const rows = tasks.slice(0,8);
+  $("#ov-tasks").innerHTML = rows.length ? `<table><tbody>${rows.map(r=>{
+    const st = esc(r.status||"");
+    const cls = st==="done"?"b-ok":(st==="error"?"b-bad":(st==="waiting"?"b-dim":"b-info"));
+    return `<tr><td>${esc(r.name||"")}</td><td class="mono">${esc(r.target||"")}</td>
+      <td><span class="badge ${cls}">${st}</span></td>
+      <td class="mono dim">${esc((r.start_time||"-").slice(0,19))}</td></tr>`;
+  }).join("")}</tbody></table>` : '<div class="dim2">暂无任务</div>';
+};
+
+/* ============================ 资产检索（单搜索栏智能路由 + 筛选 chip + 详情抽屉） ============================ */
+const ASSET_KINDS = {
+  site: {title:"站点", api:"asset_site",
+         cols:["站点","标题","状态码","指纹","来源"],
+         fields:["site","title","status","finger.name","source"],
+         route(v){
+           if (/^https?:\/\//.test(v) || v.includes("/")) return "site";
+           if (/^\d{1,3}(\.\d{1,3}){3}$/.test(v)) return "ip";
+           if (/^\d{2,5}$/.test(v)) return "status";
+           return "site";
+         }},
+  domain:{title:"域名", api:"asset_domain",
+          cols:["域名","来源"], fields:["domain","source"],
+          route(){ return "domain"; }},
+  ip:    {title:"IP", api:"asset_ip",
+          cols:["IP","端口"], fields:["ip"],
+          route(){ return "ip"; }},
+  vuln:  {title:"漏洞", api:"vuln",
+          cols:["漏洞","严重度","插件","目标"], fields:["vul_name","plg_name","target"],
+          route(){ return "vul_name"; }},
+  app:   {title:"APP", api:"asset_ext",
+          extra:"kind=app",
+          cols:["应用名","所属企业","下载量级","安卓更新"],
+          fields:["appname","ent_name"],
+          route(){ return "appname"; }},
+  miniprogram: {title:"小程序", api:"asset_ext",
+          extra:"kind=miniprogram",
+          cols:["小程序名","类目","所属企业"],
+          fields:["name","ent_name"],
+          route(){ return "name"; }},
+  icp:   {title:"ICP 备案", api:"asset_ext",
+          extra:"kind=icp",
+          cols:["域名","备案号","网站名","审核日期","所属企业"],
+          fields:["hostname","icpnum","ent_name"],
+          route(){ return "hostname"; }},
+};
+const AF_LABEL = {site:"站点",hostname:"主机",ip:"IP",title:"标题",
+  "finger.name":"指纹",status:"状态码",source:"来源",domain:"域名",
+  vul_name:"漏洞名",plg_name:"插件",target:"目标",
+  appname:"应用名",ent_name:"所属企业",icpnum:"备案号",cate:"类目"};
+
+let assetKind = "site", assetPage = 1, assetSize = 50;
+let assetRaw = [], assetSortCol = null, assetSortDir = 1;
+let assetFilters = {};
+
+ROUTES.assets = function(){ renderAssets("site"); };
+
+function renderAssets(kind){
+  assetKind = kind; assetPage = 1; assetFilters = {};
+  const conf = ASSET_KINDS[kind];
+  $("#view").innerHTML = `
+    <h2 class="page">资产检索</h2>
+    <div class="row">
+      ${Object.keys(ASSET_KINDS).map(k=>
+        `<button class="btn ${k===kind?"primary":""}" onclick="renderAssets('${k}')">${ASSET_KINDS[k].title}</button>`).join("")}
+    </div>
+    <div class="row">
+      <input type="text" id="as-q" placeholder="输入关键词 / URL / IP / 状态码，自动识别"
+             style="flex:1;min-width:320px" onkeydown="if(event.key==='Enter')asQuickSearch()"/>
+      <button class="btn primary" onclick="asQuickSearch()">查询</button>
+      <button class="btn" onclick="asToggleAdvanced(this)">高级筛选</button>
+      <button class="btn" onclick="assetCsv()">导出 CSV</button>
+    </div>
+    <div id="as-advanced" style="display:none;margin-bottom:10px">
+      <div class="card">
+        <div class="row" style="margin:0">
+          ${conf.fields.map(f=>`
+            <input type="text" class="af" data-f="${f}" placeholder="${AF_LABEL[f]||f}"
+                   style="width:150px" onkeydown="if(event.key==='Enter')asApplyAdvanced()"/>`).join("")}
+          <select id="af-size">
+            ${[25,50,100,200].map(n=>`<option value="${n}" ${n===assetSize?"selected":""}>${n} 条/页</option>`).join("")}
+          </select>
+          <button class="btn" onclick="asApplyAdvanced()">应用</button>
+        </div>
+      </div>
+    </div>
+    <div class="chips" id="as-chips"></div>
+    <div class="tblwrap" id="as-table">加载中…</div>
+    <div id="as-pager"></div>`;
+  loadAssets(1);
+}
+
+function asQuickSearch(){
+  const v = ($("#as-q")||{}).value.trim();
+  assetFilters = {};
+  if (v) assetFilters[ASSET_KINDS[assetKind].route(v)] = v;
+  assetPage = 1;
+  loadAssets(1);
+}
+
+function asToggleAdvanced(btn){
+  const box = $("#as-advanced");
+  box.style.display = box.style.display === "none" ? "block" : "none";
+}
+
+function asApplyAdvanced(){
+  document.querySelectorAll("#view .af").forEach(i=>{
+    const val = i.value.trim();
+    if (val) assetFilters[i.dataset.f] = val;
+    else delete assetFilters[i.dataset.f];
+  });
+  assetSize = parseInt(($("#af-size")||{}).value || 50);
+  assetPage = 1;
+  loadAssets(1);
+}
+
+function asRemoveFilter(f){
+  delete assetFilters[f];
+  loadAssets(1);
+}
+
+function asChips(){
+  const entries = Object.entries(assetFilters);
+  const box = $("#as-chips");
+  if (!entries.length){ box.innerHTML = ""; return; }
+  box.innerHTML = entries.map(([f,v])=>
+    `<span class="chip">${AF_LABEL[f]||f} = ${esc(v)}
+      <a href="#" style="color:var(--bad);margin-left:6px"
+         onclick="asRemoveFilter('${f}');return false">✕</a></span>`).join("");
+}
+
+function assetQuery(){
+  const conf = ASSET_KINDS[assetKind];
+  const q = [`page=${assetPage}`, `size=${assetSize}`];
+  if (conf.extra) q.push(conf.extra);
+  Object.entries(assetFilters).forEach(([f,v])=>{
+    q.push(`${encodeURIComponent(f)}=${encodeURIComponent(v)}`);
+  });
+  return q.join("&");
+}
+
+async function loadAssets(page){
+  if (page) assetPage = page;
+  const conf = ASSET_KINDS[assetKind];
+  $("#as-table").innerHTML = '<div class="empty">加载中…</div>';
+  asChips();
+  const apiPath = conf.api || ("asset_" + assetKind);
+  const body = await api(`/${apiPath}/?${assetQuery()}`)
+    .catch(e=>({}));
+  const {items, total} = pickList(body);
+  assetRaw = items;
+  let rows = items.map((x,i)=>({i, cells: normalizeAsset(assetKind, x)}));
+  const st = sortState["asset"];
+  if (st && assetSortCol != null){
+    const strip = html => String(html).replace(/<[^>]*>/g,"");
+    rows = [...rows].sort((a,b)=>{
+      const av = strip(a.cells[st.col] ?? ""), bv = strip(b.cells[st.col] ?? "");
+      return st.dir * av.localeCompare(bv, undefined, {numeric:true});
+    });
+  }
+  const head = conf.cols.map((c,i)=>
+    `<th class="sortable" onclick="assetSort(${i},'${c}')">${c}${sortIcon("asset", String(i))}</th>`).join("");
+  $("#as-table").innerHTML = `<table><thead><tr>${head}</tr></thead><tbody>${
+    rows.map(r=>`<tr style="cursor:pointer" onclick="assetDetail(${r.i})">${
+      r.cells.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  $("#as-pager").innerHTML = pagerHtml("asset", assetPage, assetSize, total);
+}
+
+function assetSort(colIndex, colName){
+  if (assetSortCol === colName) assetSortDir *= -1;
+  else { assetSortCol = colName; assetSortDir = 1; }
+  sortState["asset"] = {col: colIndex, dir: assetSortDir};
+  loadAssets();
+}
+
+function normalizeAsset(kind, x){
+  const stop = ' onclick="event.stopPropagation()"';
+  if (kind === "site"){
+    const url = esc(x.site||"");
+    return [`<a href="${url}" target="_blank" class="mono"${stop}>${url}</a>`,
+      esc(x.title||""), esc(x.status||""),
+      (x.finger||[]).map(f=>esc(f.name||f)).join(" "),
+      esc(x.source||"")];
+  }
+  if (kind === "domain")
+    return [`<span class="mono">${esc(x.domain)}</span>`, esc(x.source||"")];
+  if (kind === "ip")
+    return [`<span class="mono">${esc(x.ip)}</span>`,
+      `<span class="mono">${(x.port_info||[]).map(p=>p.port_id).join(",")}</span>`];
+  if (kind === "app")
+    return [esc(x.appname||""), esc(x.ent_name||""),
+      esc(x.downloadCountLevel||"—"), esc(x.updateDateAndroid||"—")];
+  if (kind === "miniprogram")
+    return [esc(x.name||""), esc(x.cate||"—"), esc(x.ent_name||"")];
+  if (kind === "icp")
+    return [`<span class="mono">${esc(x.hostname||"")}</span>`, esc(x.icpnum||""),
+      esc(x.webname||""), esc(x.shdate||"—"), esc(x.ent_name||"")];
+  return [esc(x.vul_name||x.name||""),
+    `<span class="sev-${esc(String(x.severity||"low").toLowerCase())}">${esc(x.severity||"low")}</span>`,
+    esc(x.plg_name||""), `<span class="mono">${esc((x.url||x.target||"").slice(0,50))}</span>`];
+}
+
+function assetDetail(idx){
+  const x = assetRaw[idx];
+  if (!x) return;
+  const rows = Object.entries(x)
+    .filter(([k])=>k !== "_id")
+    .map(([k,v])=>{
+      let display = typeof v === "object" ? JSON.stringify(v) : String(v ?? "");
+      if (display.length > 200) display = display.slice(0,200) + "…";
+      return `<div><b>${esc(k)}</b> ${esc(display)}</div>`;
+    }).join("");
+  openDrawer(`<h3>资产详情</h3><div class="dl">${rows}</div>`);
+}
+
+function assetCsv(){
+  const conf = ASSET_KINDS[assetKind];
+  const plain = assetRaw.map(x=>normalizeAsset(assetKind, x)
+    .map(c=>String(c).replace(/<[^>]*>/g,"")));
+  csvDownload(`assets_${assetKind}_${Date.now()}.csv`, conf.cols, plain);
+}
+
+/* ============================ 资产组 ============================ */
+let scopePolicies = [];
+let scopeCache = [];
+
+ROUTES.scopes = async function(){
+  $("#view").innerHTML = `
+    <h2 class="page">资产组</h2>
+    <div class="row">
+      <button class="btn primary" onclick="openScopeForm()">新建资产组</button>
+      <button class="btn" onclick="ROUTES.scopes()">刷新</button>
+      <span class="dim2" style="font-size:13px">域名 / IP 段集合——监控任务、计划扫描与报告的边界</span>
+    </div>
+    <div class="tblwrap" id="sc-table">加载中…</div>`;
+  const [body, polB] = await Promise.all([
+    api("/asset_scope/?size=500").catch(e=>({})),
+    api("/policy/?size=200").catch(e=>({})),
+  ]);
+  const {items} = pickList(body);
+  scopeCache = items;
+  scopePolicies = (polB.data && polB.data.items) || [];
+  $("#sc-table").innerHTML = items.length ?
+    `<table><thead><tr><th>名称</th><th>类型</th><th>范围</th><th>黑名单</th><th>操作</th></tr></thead>
+     <tbody>${items.map(r=>{
+       const arr = r.scope_array || (r.scope||"").split(",") || [];
+       const shown = arr.slice(0,6);
+       const black = r.black_scope_array || [];
+       return `<tr>
+        <td>${esc(r.name||"")}</td>
+        <td><span class="badge ${r.scope_type==="ip"?"b-warn":"b-info"}">${esc(r.scope_type||"domain")}</span></td>
+        <td style="max-width:420px"><div class="chips" style="margin:0">${shown.map(s=>
+          `<span class="chip mono">${esc(s)}</span>`).join("")}
+          ${arr.length>6?`<span class="chip dim2">+${arr.length-6}</span>`:""}</div></td>
+        <td>${black.length?`<span class="badge b-dim">${black.length} 项</span>`:'<span class="dim2">—</span>'}</td>
+        <td style="white-space:nowrap">
+          <a href="#" onclick="scopeDetail('${esc(r._id)}');return false">详情 / 监控</a>
+        </td></tr>`;
+     }).join("")}</tbody></table>` : '<div class="empty">暂无资产组——先新建一个，再在任务与监控中使用</div>';
+};
+
+function openScopeForm(){
+  openDrawer(`<h3>新建资产组</h3>
+    <div class="dl">
+      <div><b>名称</b> <input type="text" id="scf-name" placeholder="如 example.com 主域" style="width:280px"/></div>
+      <div><b>类型</b>
+        <select id="scf-type" style="width:140px">
+          <option value="domain">域名</option><option value="ip">IP / IP 段</option>
+        </select></div>
+    </div>
+    <h4>资产范围（逗号或换行分隔）</h4>
+    <textarea id="scf-scope" style="width:100%;height:110px;font-family:var(--mono);font-size:13px"
+      placeholder="example.com&#10;sub.example.com"></textarea>
+    <h4>黑名单（可选，命中后不纳入）</h4>
+    <textarea id="scf-black" style="width:100%;height:64px;font-family:var(--mono);font-size:13px"
+      placeholder="dev.example.com"></textarea>
+    <button class="btn primary" style="width:100%;margin-top:12px" onclick="submitScope()">创建</button>`);
+}
+
+async function submitScope(){
+  const name = $("#scf-name").value.trim();
+  const scope = $("#scf-scope").value.trim();
+  if (!name || !scope){ toast("名称与范围必填"); return; }
+  const body = await api("/asset_scope/", {method:"POST", json:{
+    name, scope, black_scope: $("#scf-black").value.trim(),
+    scope_type: $("#scf-type").value}});
+  if (body.code === 200){ toast("资产组已创建"); closeDrawer(); ROUTES.scopes(); }
+  else toast(body.message || "创建失败");
+}
+
+function scopeDetail(id){
+  const r = scopeCache.find(x=>x._id === id);
+  if (!r) return;
+  const arr = r.scope_array || [];
+  const black = r.black_scope_array || [];
+  const polOpts = scopePolicies.map(p=>
+    `<option value="${esc(p._id)}">${esc(p.name)}</option>`).join("");
+  openDrawer(`<h3>${esc(r.name)} <span class="badge ${r.scope_type==="ip"?"b-warn":"b-info"}">${esc(r.scope_type||"domain")}</span></h3>
+    <h4>监控设置（对下面的范围条目生效）</h4>
+    <div class="row" style="margin:0 0 6px">
+      <select id="sd-interval">
+        <option value="21600">每 6 小时</option>
+        <option value="43200">每 12 小时</option>
+        <option value="86400" selected>每天</option>
+      </select>
+      <select id="sd-policy"><option value="">默认策略</option>${polOpts}</select>
+    </div>
+    <h4>资产范围（${arr.length}）</h4>
+    <div class="chips">${arr.length ? arr.map(s=>
+      `<span class="chip mono">${esc(s)}
+        <a href="#" title="对该条目创建监控任务" onclick="scopeMonitor('${esc(r._id)}','${esc(s)}');return false">监控</a>
+        <a href="#" title="从资产组移除" onclick="scopeRemoveEntry('${esc(r._id)}','${esc(s)}');return false">✕</a></span>`).join("")
+      : '<span class="dim2">无</span>'}</div>
+    <div class="row" style="margin:10px 0 0">
+      <input type="text" id="sd-add" placeholder="追加范围条目" style="flex:1;min-width:200px"/>
+      <button class="btn" onclick="scopeAddEntry('${esc(r._id)}')">添加</button>
+    </div>
+    <h4>黑名单（${black.length}）</h4>
+    <div class="chips">${black.length ? black.map(s=>
+      `<span class="chip mono">${esc(s)}</span>`).join("") : '<span class="dim2">无</span>'}</div>
+    <button class="btn danger" style="width:100%;margin-top:16px"
+      onclick="scopeDelete('${esc(r._id)}','${esc(r.name)}')">删除整个资产组</button>`);
+}
+
+async function scopeMonitor(scopeId, domain){
+  const interval = parseInt(($("#sd-interval")||{}).value || 86400, 10);
+  const policyId = ($("#sd-policy")||{}).value || "";
+  const payload = {scope_id: scopeId, domain, interval, name: ""};
+  if (policyId) payload.policy_id = policyId;
+  const body = await api("/scheduler/add/", {method:"POST", json:payload})
+    .catch(e=>({message:String(e)}));
+  if (body.code === 200) toast("监控任务已创建——计划任务页可查");
+  else toast(body.message || "创建失败");
+}
+
+async function scopeAddEntry(scopeId){
+  const scope = ($("#sd-add")||{}).value.trim();
+  if (!scope){ toast("请输入范围条目"); return; }
+  const body = await api("/asset_scope/add/", {method:"POST", json:{scope, scope_id: scopeId}})
+    .catch(e=>({message:String(e)}));
+  if (body.code === 200){ toast("已添加"); ROUTES.scopes().then(()=>scopeDetail(scopeId)); }
+  else toast(body.message || "添加失败");
+}
+
+async function scopeRemoveEntry(scopeId, scope){
+  if (!confirm("从资产组移除 " + scope + " ？")) return;
+  const body = await api("/asset_scope/delete/?scope=" + encodeURIComponent(scope) +
+    "&scope_id=" + scopeId).catch(e=>({message:String(e)}));
+  if (body.code === 200){ toast("已移除"); ROUTES.scopes().then(()=>scopeDetail(scopeId)); }
+  else toast(body.message || "移除失败");
+}
+
+async function scopeDelete(scopeId, name){
+  if (!confirm("确认删除资产组「" + name + "」？其下资产与监控任务将一并删除。")) return;
+  const body = await api("/asset_scope/delete/", {method:"POST", json:{scope_id:[scopeId]}})
+    .catch(e=>({message:String(e)}));
+  if (body.code === 200){ toast("已删除"); closeDrawer(); ROUTES.scopes(); }
+  else toast(body.message || "删除失败");
+}
+
+/* ============================ 任务 ============================ */
+let taskPage = 1, taskStatus = "", taskKw = "";
+ROUTES.tasks = function(){
+  $("#view").innerHTML = `
+    <h2 class="page">任务管理</h2>
+    <div class="row">
+      <button class="btn primary" onclick="openTaskForm()">新建任务</button>
+      <select id="tk-status" onchange="taskPage=1;loadTasks()">
+        <option value="">全部状态</option>
+        ${["waiting","doing","done","error","stop"].map(s=>`<option value="${s}">${s}</option>`).join("")}
+      </select>
+      <input type="text" id="tk-kw" placeholder="名称/目标" style="width:200px"
+             onkeydown="if(event.key==='Enter'){taskPage=1;loadTasks()}"/>
+      <button class="btn" onclick="taskPage=1;loadTasks()">查询</button>
+      <button class="btn danger" onclick="taskBatchStop()">批量停止</button>
+      <button class="btn" onclick="ROUTES.tasks()">刷新</button>
+      <span class="dim2" style="font-size:13px" id="tk-count"></span>
+    </div>
+    <div class="tblwrap" id="tk-table">加载中…</div>
+    <div id="tk-pager"></div>`;
+  loadTasks();
+};
+async function loadTasks(){
+  const st = ($("#tk-status")||{}).value || taskStatus;
+  const kw = ($("#tk-kw")||{}).value || taskKw;
+  const q = [`page=${taskPage}`, `size=25`];
+  if (st) q.push("status="+st);
+  if (kw) q.push("keyword="+encodeURIComponent(kw));
+  $("#tk-table").innerHTML = '<div class="empty">加载中…</div>';
+  const body = await api("/task/?"+q.join("&")).catch(e=>({}));
+  const {items, total} = pickList(body);
+  const tkCount = $("#tk-count"); if (tkCount) tkCount.textContent = `共 ${total} 条`;
+  const tbl = $("#tk-table");
+  if (!items.length){ tbl.innerHTML = '<div class="empty">暂无任务</div>';
+    $("#tk-pager").innerHTML = pagerHtml("tk", taskPage, 25, 0); return; }
+  tbl.innerHTML = `<table><thead><tr>
+      <th><input type="checkbox" onclick="tkCheckAll(this)"/></th>
+      <th>名称</th><th>目标</th><th>状态</th><th>开始时间</th><th>结束时间</th><th>操作</th></tr></thead>
+    <tbody>${items.map(r=>{
+      const id = esc(r._id), st = esc(r.status||"");
+      const cls = st==="done"?"b-ok":(st==="error"?"b-bad":(st==="waiting"||st==="doing"?"b-info":"b-dim"));
+      const running = !["done","error","stop"].includes(st);
+      const settled = ["done","error","stop"].includes(st);
+      return `<tr><td><input type="checkbox" class="tk-ck" data-id="${id}"/></td>
+        <td>${esc(r.name||"")}</td><td class="mono">${esc(r.target||"")}</td>
+        <td><span class="badge ${cls}">${st}</span></td>
+        <td class="mono dim">${esc((r.start_time||"-").slice(0,19))}</td>
+        <td class="mono dim">${esc((r.end_time||"-").slice(0,19))}</td>
+        <td style="white-space:nowrap">
+          <a href="#" onclick="taskDetail('${id}');return false">详情</a>
+          ${running?` · <a href="#" onclick="taskStop('${id}');return false">停止</a>`:""}
+          ${settled?` · <a href="#" onclick="taskRestart('${id}');return false">重跑</a>`:""}
+          ${settled?` · <a href="#" onclick="taskDelete('${id}');return false" style="color:var(--bad)">删除</a>`:""}
+        </td></tr>`;
+    }).join("")}</tbody></table>`;
+  $("#tk-pager").innerHTML = pagerHtml("tk", taskPage, 25, total);
+}
+function tkCheckAll(box){
+  document.querySelectorAll(".tk-ck").forEach(c=>c.checked = box.checked);
+}
+function checkedTaskIds(){
+  return [...document.querySelectorAll(".tk-ck:checked")].map(c=>c.dataset.id);
+}
+async function taskStop(id){
+  await api("/task/stop/"+id); toast("已停止"); loadTasks();
+}
+async function taskBatchStop(){
+  const ids = checkedTaskIds();
+  if (!ids.length){ toast("请先勾选任务"); return; }
+  await api("/task/batch_stop/", {method:"POST", json:{task_id: ids}});
+  toast("已批量停止"); loadTasks();
+}
+async function taskRestart(id){
+  await api("/task/restart/", {method:"POST", json:{task_id:[id]}});
+  toast("已重新入队"); loadTasks();
+}
+async function taskDelete(id){
+  if (!confirm("确认删除该任务？")) return;
+  await api("/task/delete/", {method:"POST", json:{task_id:[id], del_task_data:true}});
+  toast("已删除"); loadTasks();
+}
+async function taskDetail(id){
+  const body = await api("/task/stage/?task_id="+id).catch(e=>({}));
+  const items = (body.data && (body.data.items || body.data)) || [];
+  const arr = Array.isArray(items) ? items : Object.values(items);
+  arr.sort((a,b)=> (a.order ?? stageOrderOf(a)) - (b.order ?? stageOrderOf(b)));
+  openDrawer(`<h3>任务阶段</h3><div class="tl">${
+    arr.length ? arr.map(s=>{
+      const st = esc(s.status||"");
+      const cls = st==="done"?"done":(st==="error"?"error":"doing");
+      return `<div class="item ${cls}"><b>${esc(s.stage||s.name||"")}</b>
+        <span class="badge ${st==="done"?"b-ok":(st==="error"?"b-bad":"b-info")}">${st}</span>
+        ${s.error?`<div style="color:var(--bad);font-size:13px">${esc(String(s.error).slice(0,120))}</div>`:""}
+      </div>`;
+    }).join("") : '<div class="dim2">无阶段数据</div>'}</div>`);
+}
+function stageOrderOf(_s){ return 0; }
+
+const TASK_TEMPLATES = {
+  quick:    {label: "快速", desc: "子域发现 + 站点识别 · 常用端口",
+             port: "test",
+             checks: {domain_brute:true, arl_search:true, site_identify:true}},
+  standard: {label: "标准", desc: "全量资产发现 · Top1000 端口",
+             port: "top1000",
+             checks: {domain_brute:true, arl_search:true, dns_query_plugin:true,
+                      alt_dns:true, site_identify:true, ssl_cert:true}},
+  deep:     {label: "深度", desc: "含目录扫描与漏洞验证 · 全端口",
+             port: "all",
+             checks: {domain_brute:true, arl_search:true, dns_query_plugin:true,
+                      alt_dns:true, search_engines:true, site_identify:true,
+                      ssl_cert:true, file_leak:true, nuclei_scan:true, site_spider:true}},
+};
+const TF_ALL_OPTS = [["domain_brute","域名爆破"],["arl_search","ARL 历史"],
+  ["dns_query_plugin","被动收集"],["alt_dns","DNS 变异"],["search_engines","搜索引擎"],
+  ["site_identify","站点识别"],["ssl_cert","SSL 证书"],["file_leak","目录扫描"],
+  ["nuclei_scan","Nuclei"],["site_spider","站点爬虫"],["web_info_hunter","WIH 信息"],
+  ["findvhost","Host 碰撞"],["ai_judge","AI 研判"],["bing_deep","Bing 深搜"],
+  ["js_deep","JS 分析"],["shadow_asset","影子资产"]];
+
+function openTaskForm(){
+  openDrawer(`<h3>新建任务</h3>
+    <div class="dl">
+      <div><b>目标</b> <input type="text" id="tf-target" placeholder="example.com / 1.2.3.0/24" style="width:300px"/></div>
+      <div><b>任务名</b> <input type="text" id="tf-name" placeholder="任务名称" style="width:300px"/></div>
+      <div><b>扫描模板</b></div>
+    </div>
+    <div class="row" style="margin:6px 0 4px">
+      ${Object.entries(TASK_TEMPLATES).map(([key, t])=>
+        `<button class="btn ${key==="standard"?"primary":""}" data-tpl="${key}"
+                 onclick="tfApplyTemplate(this)">${t.label}</button>`).join("")}
+    </div>
+    <div id="tf-tpl-desc" style="color:var(--dim);margin-bottom:8px">${TASK_TEMPLATES.standard.desc}</div>
+    <details>
+      <summary style="cursor:pointer;color:var(--acc)">高级选项（按模板填充，可微调）</summary>
+      <div class="dl" style="margin-top:8px">
+        <div><b>端口档位</b>
+          <select id="tf-port" style="width:150px">
+            <option value="test">常用端口</option><option value="top100">Top100</option>
+            <option value="top1000">Top1000</option><option value="all">全端口</option>
+            <option value="custom">自定义</option>
+          </select>
+          <input type="text" id="tf-port-custom" placeholder="自定义端口 80,443" style="width:140px;display:none"/>
+        </div>
+      </div>
+      <div class="checks" id="tf-checks"></div>
+    </details>
+    <button class="btn primary" style="width:100%;margin-top:12px" onclick="submitTask()">下发任务</button>`);
+
+  $("#tf-checks").innerHTML = TF_ALL_OPTS.map(([k,t])=>
+    `<label><input type="checkbox" id="ck-${k}"/> ${t}</label>`).join("");
+  $("#tf-port").addEventListener("change", e=>{
+    $("#tf-port-custom").style.display = e.target.value==="custom" ? "" : "none";
+  });
+  tfApplyTemplate({dataset:{tpl:"standard"}});
+}
+
+function tfApplyTemplate(btn){
+  const key = btn.dataset.tpl;
+  const tpl = TASK_TEMPLATES[key];
+  if (!tpl) return;
+  document.querySelectorAll("[data-tpl]").forEach(b=>
+    b.classList.toggle("primary", b.dataset.tpl === key));
+  $("#tf-tpl-desc").textContent = tpl.desc;
+  $("#tf-port").value = tpl.port;
+  $("#tf-port-custom").style.display = tpl.port === "custom" ? "" : "none";
+  TF_ALL_OPTS.forEach(([k])=>{
+    const ck = document.getElementById("ck-"+k);
+    if (ck) ck.checked = !!tpl.checks[k];
+  });
+}
+
+async function submitTask(){
+  const target = $("#tf-target").value.trim();
+  const name = $("#tf-name").value.trim();
+  if (!target || !name){ toast("目标与任务名必填"); return; }
+  const payload = {name, target};
+  document.querySelectorAll("#tf-checks input").forEach(c=>{
+    const key = c.id.replace("ck-","");
+    payload[key] = c.checked;
+    if (key==="nuclei_scan" && c.checked) payload.nuclei_scan_confirm = true;
+  });
+  payload.port_scan = true;
+  payload.port_scan_type = $("#tf-port").value;
+  if (payload.port_scan_type === "custom")
+    payload.port_custom = $("#tf-port-custom").value.trim();
+  const body = await api("/task/", {method:"POST", json:payload}).catch(e=>({message:String(e)}));
+  if (body.code === 200){ toast("任务已下发"); closeDrawer(); go("#/tasks"); ROUTES.tasks(); }
+  else toast(body.message || "下发失败");
+}
+
+/* ============================ 任务策略 ============================ */
+const POL_DC = [["domain_brute","域名爆破"],["alt_dns","DNS 变异"],["arl_search","ARL 历史"],
+  ["dns_query_plugin","被动收集"],["bing_deep","Bing 深搜"]];
+const POL_IP = [["service_detection","服务识别"],["os_detection","系统识别"],["ssl_cert","SSL 证书"]];
+const POL_SITE = [["site_identify","站点识别"],["site_capture","站点截图"],["search_engines","搜索引擎"],
+  ["site_spider","站点爬虫"],["web_info_hunter","JS 信息收集"],["js_deep","JS 深度分析"],
+  ["nuclei_scan","Nuclei 扫描"],["ai_judge","AI 研判"]];
+let policyCache = [];
+
+ROUTES.policy = async function(){
+  $("#view").innerHTML = `
+    <h2 class="page">任务策略</h2>
+    <div class="row">
+      <button class="btn primary" onclick="openPolicyForm()">新建策略</button>
+      <button class="btn" onclick="togglePolicyYaml()">导入 YAML</button>
+      <button class="btn" onclick="ROUTES.policy()">刷新</button>
+      <span class="dim2" style="font-size:13px">预设域名 / IP / 站点扫描项组合，提交任务与计划任务时按名称选用</span>
+    </div>
+    <div class="card" id="pol-yaml" style="display:none;margin-bottom:14px">
+      <div class="row" style="margin:0">
+        <input type="text" id="py-name" placeholder="新策略名" style="width:200px"/>
+        <span class="dim2" style="font-size:13px">粘贴 YAML（含 name/desc/policy 节点）</span>
+      </div>
+      <textarea id="py-text" style="width:100%;height:160px;font-family:var(--mono);font-size:13px"></textarea>
+      <button class="btn" style="margin-top:8px" onclick="policyYamlImport()">导入为新策略</button>
+    </div>
+    <div class="tblwrap" id="pol-table">加载中…</div>`;
+  loadPolicies();
+};
+
+async function loadPolicies(){
+  const body = await api("/policy/?size=200").catch(e=>({}));
+  policyCache = (body.data && body.data.items) || [];
+  $("#pol-table").innerHTML = policyCache.length ?
+    `<table><thead><tr><th>策略</th><th>描述</th><th>配置摘要</th><th>更新时间</th><th>操作</th></tr></thead>
+     <tbody>${policyCache.map(r=>{
+       const p = r.policy||{};
+       const dcOn = Object.entries(p.domain_config||{}).filter(([k,v])=>v).length;
+       const scOn = Object.entries(p.site_config||{}).filter(([k,v])=>v).length;
+       const ip = p.ip_config||{};
+       const portTxt = ip.port_scan ? ("端口 " + (ip.port_scan_type||"test")) : "端口关";
+       const extras = [p.file_leak?"目录扫描":"", p.npoc_service_detection?"Py服务识别":""]
+         .filter(Boolean).join(" · ");
+       return `<tr>
+        <td>${esc(r.name)}</td>
+        <td style="color:var(--dim)">${esc(r.desc||"")}</td>
+        <td style="color:var(--dim);font-size:13px">${dcOn} 项域名 · ${portTxt} · ${scOn} 项站点${extras?" · "+extras:""}</td>
+        <td class="mono dim">${esc(r.update_date||"")}</td>
+        <td style="white-space:nowrap">
+          <a href="#" onclick="openPolicyForm('${esc(r._id)}');return false">编辑</a> ·
+          <a href="#" onclick="policyGraph('${esc(r._id)}');return false">执行图</a> ·
+          <a href="#" onclick="policyYamlExport('${esc(r._id)}');return false">导出</a> ·
+          <a href="#" onclick="policyClone('${esc(r._id)}');return false">克隆</a> ·
+          <a href="#" onclick="policyDelete('${esc(r._id)}','${esc(r.name)}');return false" style="color:var(--bad)">删除</a>
+        </td></tr>`;
+     }).join("")}</tbody></table>` : '<div class="empty">暂无策略——新建或从 YAML 导入</div>';
+}
+
+function togglePolicyYaml(){
+  const box = $("#pol-yaml");
+  box.style.display = box.style.display === "none" ? "block" : "none";
+}
+
+function chkGroup(groupId, defs, conf){
+  return `<div class="frm col" id="${groupId}">${defs.map(([k,t])=>
+    `<label><input type="checkbox" data-k="${k}" ${conf&&conf[k]?"checked":""}/> ${t}</label>`).join("")}</div>`;
+}
+
+function openPolicyForm(id){
+  const item = id ? policyCache.find(p=>p._id===id) : null;
+  const p = (item && item.policy) || {};
+  const ip = p.ip_config||{};
+  openDrawer(`<h3>${item?("编辑策略 · "+esc(item.name)):"新建策略"}</h3>
+    <div class="dl">
+      <div><b>名称</b> <input type="text" id="pf-name" value="${esc((item&&item.name)||"")}" style="width:240px"/></div>
+      <div><b>描述</b> <input type="text" id="pf-desc" value="${esc((item&&item.desc)||"")}" style="width:240px"/></div>
+    </div>
+    <h4>域名配置</h4>
+    ${chkGroup("pf-dc", POL_DC, p.domain_config)}
+    <h4>IP 配置</h4>
+    <div class="frm">
+      <label><input type="checkbox" id="pf-portscan" ${!ip.port_scan?"":"checked"}/> 端口扫描</label>
+      <div class="row" style="margin:4px 0 0">
+        <select id="pf-port-type" style="width:130px">
+          ${["test","top100","top1000","all","custom"].map(v=>
+            `<option value="${v}" ${(ip.port_scan_type||"test")===v?"selected":""}>${v}</option>`).join("")}
+        </select>
+        <input type="text" id="pf-port-custom" placeholder="自定义端口 80,443"
+               value="${esc(ip.port_custom||"")}" style="width:150px"/>
+      </div>
+    </div>
+    ${chkGroup("pf-ip", POL_IP, ip)}
+    <h4>站点配置</h4>
+    ${chkGroup("pf-sc", POL_SITE, p.site_config)}
+    <h4>其他</h4>
+    <div class="frm col">
+      <label><input type="checkbox" id="pf-fileleak" ${p.file_leak?"checked":""}/> 目录扫描（file_leak）</label>
+      <label><input type="checkbox" id="pf-npoc" ${p.npoc_service_detection?"checked":""}/> 服务识别（纯 Py）</label>
+    </div>
+    <button class="btn primary" style="width:100%;margin-top:12px" onclick="submitPolicy('${esc(id||"")}')">保存策略</button>`);
+}
+
+function pfCollect(groupId){
+  const out = {};
+  document.querySelectorAll("#"+groupId+" input[data-k]").forEach(c=>{
+    out[c.dataset.k] = c.checked;
+  });
+  return out;
+}
+
+async function submitPolicy(id){
+  const name = $("#pf-name").value.trim();
+  if (!name){ toast("策略名称必填"); return; }
+  const ipConfig = {
+    port_scan: $("#pf-portscan").checked,
+    port_scan_type: $("#pf-port-type").value,
+    service_detection: false, os_detection: false, ssl_cert: false,
+  };
+  Object.assign(ipConfig, pfCollect("pf-ip"));
+  if (ipConfig.port_scan_type === "custom")
+    ipConfig.port_custom = $("#pf-port-custom").value.trim();
+  const siteConfig = pfCollect("pf-sc");
+  if (siteConfig.nuclei_scan) siteConfig.nuclei_scan = true;
+  const payload = {
+    name,
+    desc: $("#pf-desc").value.trim(),
+    policy: {
+      domain_config: pfCollect("pf-dc"),
+      ip_config: ipConfig,
+      site_config: siteConfig,
+      file_leak: $("#pf-fileleak").checked,
+      npoc_service_detection: $("#pf-npoc").checked,
+    },
+  };
+  let body;
+  if (id){
+    body = await api("/policy/edit/", {method:"POST",
+      json:{policy_id: id, policy_data: payload}}).catch(e=>({message:String(e)}));
+  } else {
+    body = await api("/policy/add/", {method:"POST", json:payload}).catch(e=>({message:String(e)}));
+  }
+  if (body.code === 200){ toast("策略已保存"); closeDrawer(); loadPolicies(); }
+  else toast(body.message || "保存失败");
+}
+
+async function policyDelete(id, name){
+  if (!confirm("确认删除策略「" + name + "」？引用它的计划任务将无法再次启动。")) return;
+  await api("/policy/delete/", {method:"POST", json:{policy_id:[id]}});
+  toast("已删除"); loadPolicies();
+}
+
+async function policyClone(id){
+  const item = policyCache.find(p=>p._id===id);
+  const name = prompt("克隆为：", (item?item.name:"策略") + "-副本");
+  if (!name) return;
+  const body = await api("/policy_yaml/clone/", {method:"POST", json:{policy_id:id, name}})
+    .catch(e=>({message:String(e)}));
+  toast(body.code===200 ? "已克隆" : (body.message||"失败"));
+  loadPolicies();
+}
+
+async function policyYamlExport(id){
+  const body = await api("/policy_yaml/yaml_export/?policy_id="+id).catch(e=>({}));
+  if (body.code !== 200){ toast("导出失败"); return; }
+  openDrawer(`<h3>策略 YAML（可复制分享）</h3>
+    <textarea readonly style="width:100%;height:420px;font-family:var(--mono);font-size:13px"
+      onclick="this.select()">${esc(body.data.yaml)}</textarea>
+    <button class="btn primary" style="margin-top:8px;width:100%"
+      onclick="navigator.clipboard.writeText(this.previousElementSibling.value).then(()=>toast('已复制'))">复制全文</button>`);
+}
+
+async function policyYamlImport(){
+  const name = $("#py-name").value.trim();
+  const text = $("#py-text").value;
+  if (!name || !text){ toast("策略名与 YAML 必填"); return; }
+  const body = await api("/policy_yaml/yaml_import/",
+    {method:"POST", json:{name, yaml: text}}).catch(e=>({message:String(e)}));
+  if (body.code === 200){ toast("导入成功"); togglePolicyYaml(); loadPolicies(); }
+  else toast((body.data && body.data.error) || body.message || "导入失败");
+}
+
+async function policyGraph(id){
+  const item = policyCache.find(p=>p._id===id);
+  const body = await api("/policy_yaml/graph/?policy_id="+encodeURIComponent(id)).catch(e=>({}));
+  if (body.code!==200){ openDrawer(`<h3>执行图</h3><div class="empty">${esc((body.data||{}).error||"加载失败")}</div>`); return; }
+  const g = body.data.graph;
+  const PH = {light:"轻量探测",heavy_top:"重量探测（Top1000）",heavy_full:"全量扫描",
+              post:"后置深化",post_finalize:"收尾统计"};
+  openDrawer(`<h3>执行图 · ${esc((item&&item.name)||"")}</h3>
+    <div class="dim2" style="font-size:13px;margin-bottom:10px">启用 ${g.summary.enabled} · 条件 ${g.summary.auto} · 关闭 ${g.summary.disabled} · 共 ${g.summary.total_stages} 阶段</div>
+    ${g.phases.map(p=>{
+      const nodes = p.nodes.map(n=>{
+        const cls = n.state==="enabled"?"b-ok":(n.state==="disabled"?"b-dim":"b-warn");
+        const deco = n.state==="disabled" ? "text-decoration:line-through;opacity:.55" : "";
+        return `<span class="badge ${cls}" style="${deco};margin:2px 4px 2px 0" title="${n.stage}">${esc(n.name)}</span>`;
+      }).join('<span class="dim2">→</span>');
+      return `<div style="margin:8px 0"><span class="dim2" style="font-size:12px;display:block;margin-bottom:4px">${PH[p.phase]||p.phase}</span>${nodes}</div>`;
+    }).join("")}`);
+}
+
+/* ============================ 计划任务 ============================ */
+let schTab = "monitor";
+let schScopeNames = {};
+
+ROUTES.schedules = function(){ renderSchedules("monitor"); };
+
+function renderSchedules(tab){
+  schTab = tab;
+  $("#view").innerHTML = `
+    <h2 class="page">计划任务</h2>
+    <div class="tabs">
+      ${[["monitor","资产组监控"],["scan","定时扫描"],["github","GitHub 泄露监控"]].map(([k,t])=>
+        `<button class="btn ${k===tab?"primary":""}" onclick="renderSchedules('${k}')">${t}</button>`).join("")}
+    </div>
+    <div id="sch-box"><div class="empty">加载中…</div></div>`;
+  ({monitor: loadMonitors, scan: loadTaskSchedules, github: loadGithubSchedules}[tab]||loadMonitors)();
+}
+
+async function loadMonitors(){
+  const box = $("#sch-box");
+  box.innerHTML = `
+    <div class="row">
+      <button class="btn primary" onclick="openMonitorForm()">新建监控任务</button>
+      <button class="btn" onclick="renderSchedules('monitor')">刷新</button>
+      <span class="dim2" style="font-size:13px">按固定间隔对资产组条目重新扫描，产出变化历史</span>
+    </div>
+    <div class="tblwrap" id="sch-table">加载中…</div>`;
+  const [body, scopeB] = await Promise.all([
+    api("/scheduler/?size=100").catch(e=>({})),
+    api("/asset_scope/?size=200").catch(e=>({})),
+  ]);
+  const {items} = pickList(body);
+  schScopeNames = {};
+  pickList(scopeB).items.forEach(s=>{ schScopeNames[s._id] = s.name; });
+  $("#sch-table").innerHTML = items.length ?
+    `<table><thead><tr><th>名称</th><th>目标</th><th>资产组</th><th>间隔</th><th>状态</th>
+      <th>已运行</th><th>上次运行</th><th>操作</th></tr></thead>
+     <tbody>${items.map(r=>{
+       const stopped = String(r.status||"").toLowerCase()==="stop";
+       return `<tr>
+        <td>${esc(r.name||"")}</td><td class="mono">${esc(r.domain||"")}</td>
+        <td>${esc(schScopeNames[r.scope_id]||r.scope_id||"—")}</td>
+        <td>${fmtInterval(r.interval)}</td>
+        <td>${jobBadge(r.status)}</td>
+        <td class="mono">${esc(r.run_number??0)}</td>
+        <td class="mono dim">${esc(r.last_run_date||"—")}</td>
+        <td style="white-space:nowrap">
+          ${stopped
+            ?`<a href="#" onclick="monitorOp('recover','${esc(r._id)}');return false">恢复</a>`
+            :`<a href="#" onclick="monitorOp('stop','${esc(r._id)}');return false">停止</a>`}
+          · <a href="#" onclick="monitorDelete('${esc(r._id)}');return false" style="color:var(--bad)">删除</a>
+        </td></tr>`;
+     }).join("")}</tbody></table>` : '<div class="empty">暂无监控任务——从资产组详情或「新建监控任务」创建</div>';
+}
+
+async function monitorOp(op, jobId){
+  const body = await api("/scheduler/"+op+"/", {method:"POST", json:{job_id: jobId}})
+    .catch(e=>({message:String(e)}));
+  toast(body.code===200 ? "已"+(op==="stop"?"停止":"恢复") : (body.message||"操作失败"));
+  loadMonitors();
+}
+
+async function monitorDelete(jobId){
+  if (!confirm("确认删除该监控任务？")) return;
+  const body = await api("/scheduler/delete/", {method:"POST", json:{job_id:[jobId]}})
+    .catch(e=>({message:String(e)}));
+  toast(body.code===200 ? "已删除" : (body.message||"删除失败"));
+  loadMonitors();
+}
+
+async function openMonitorForm(){
+  const scopeB = await api("/asset_scope/?size=200").catch(e=>({}));
+  const scopes = pickList(scopeB).items;
+  const polB = await api("/policy/?size=200").catch(e=>({}));
+  const pols = (polB.data&&polB.data.items)||[];
+  openDrawer(`<h3>新建监控任务</h3>
+    <div class="dl">
+      <div><b>资产组</b>
+        <select id="mf-scope" style="width:220px">
+          ${scopes.map(s=>`<option value="${esc(s._id)}">${esc(s.name)}</option>`).join("")}
+        </select></div>
+      <div><b>目标</b> <input type="text" id="mf-domain" placeholder="须在资产组范围内，多个逗号分隔" style="width:260px"/></div>
+      <div><b>间隔</b>
+        <select id="mf-interval" style="width:140px">
+          <option value="21600">每 6 小时</option>
+          <option value="43200">每 12 小时</option>
+          <option value="86400" selected>每天</option>
+        </select></div>
+      <div><b>策略</b>
+        <select id="mf-policy" style="width:220px"><option value="">默认策略</option>
+          ${pols.map(p=>`<option value="${esc(p._id)}">${esc(p.name)}</option>`).join("")}
+        </select></div>
+    </div>
+    <div class="dim2" style="font-size:13px;margin-top:8px">目标必须在所选资产组范围内；策略可选。</div>
+    <button class="btn primary" style="width:100%;margin-top:12px" onclick="submitMonitor()">创建</button>`);
+}
+
+async function submitMonitor(){
+  const scopeId = $("#mf-scope").value;
+  const domain = $("#mf-domain").value.trim();
+  if (!scopeId || !domain){ toast("资产组与目标必填"); return; }
+  const payload = {scope_id: scopeId, domain, interval: parseInt($("#mf-interval").value,10), name: ""};
+  const pol = $("#mf-policy").value;
+  if (pol) payload.policy_id = pol;
+  const body = await api("/scheduler/add/", {method:"POST", json:payload}).catch(e=>({message:String(e)}));
+  if (body.code === 200){ toast("监控任务已创建"); closeDrawer(); loadMonitors(); }
+  else toast(body.message || "创建失败");
+}
+
+async function loadTaskSchedules(){
+  const box = $("#sch-box");
+  box.innerHTML = `
+    <div class="row">
+      <button class="btn primary" onclick="openTaskScheduleForm()">新建计划任务</button>
+      <button class="btn" onclick="renderSchedules('scan')">刷新</button>
+      <span class="dim2" style="font-size:13px">定时一次或按 cron 周期提交扫描任务</span>
+    </div>
+    <div class="tblwrap" id="sch-table">加载中…</div>`;
+  const body = await api("/task_schedule/?size=100").catch(e=>({}));
+  const {items} = pickList(body);
+  $("#sch-table").innerHTML = items.length ?
+    `<table><thead><tr><th>名称</th><th>目标</th><th>类型</th><th>策略</th><th>状态</th>
+      <th>已运行</th><th>上次</th><th>下次</th><th>操作</th></tr></thead>
+     <tbody>${items.map(r=>{
+       const stopped = String(r.status||"").toLowerCase()==="stop";
+       const typeTxt = r.schedule_type==="future_scan"
+         ? '<span class="badge b-info">定时</span>'
+         : '<span class="badge b-warn">周期</span>';
+       const detail = r.schedule_type==="future_scan"
+         ? (r.next_run_date||r.start_date||"—")
+         : (r.cron||"—");
+       return `<tr>
+        <td>${esc(r.name||"")}</td><td class="mono" style="max-width:220px">${esc(r.target||"")}</td>
+        <td>${typeTxt}<div class="dim2 mono" style="font-size:12px">${esc(detail)}</div></td>
+        <td>${esc(r.policy_name||"—")}</td>
+        <td>${jobBadge(r.status)}</td>
+        <td class="mono">${esc(r.run_number??0)}</td>
+        <td class="mono dim">${esc(r.last_run_date||"—")}</td>
+        <td class="mono dim">${esc(r.next_run_date||"—")}</td>
+        <td style="white-space:nowrap">
+          ${stopped
+            ?`<a href="#" onclick="tsOp('recover','${esc(r._id)}');return false">恢复</a>`
+            :`<a href="#" onclick="tsOp('stop','${esc(r._id)}');return false">停止</a>`}
+          · <a href="#" onclick="tsDelete('${esc(r._id)}');return false" style="color:var(--bad)">删除</a>
+        </td></tr>`;
+     }).join("")}</tbody></table>` : '<div class="empty">暂无计划任务</div>';
+}
+
+async function tsOp(op, id){
+  const body = await api("/task_schedule/"+op+"/", {method:"POST", json:{_id:[id]}})
+    .catch(e=>({message:String(e)}));
+  toast(body.code===200 ? "已"+(op==="stop"?"停止":"恢复") : (body.message||"操作失败"));
+  loadTaskSchedules();
+}
+
+async function tsDelete(id){
+  if (!confirm("确认删除该计划任务？")) return;
+  const body = await api("/task_schedule/delete/", {method:"POST", json:{_id:[id]}})
+    .catch(e=>({message:String(e)}));
+  toast(body.code===200 ? "已删除" : (body.message||"删除失败"));
+  loadTaskSchedules();
+}
+
+async function openTaskScheduleForm(){
+  const [polB, ] = await Promise.all([api("/policy/?size=200").catch(e=>({}))]);
+  const pols = (polB.data&&polB.data.items)||[];
+  const now = new Date(Date.now() + 3600*1000);
+  const pad = n => String(n).padStart(2,"0");
+  const defDate = now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate())+
+    " "+pad(now.getHours())+":"+pad(now.getMinutes())+":00";
+  openDrawer(`<h3>新建计划任务</h3>
+    <div class="dl">
+      <div><b>名称</b> <input type="text" id="tsf-name" style="width:240px"/></div>
+      <div><b>目标</b> <input type="text" id="tsf-target" placeholder="example.com / URL" style="width:260px"/></div>
+      <div><b>类别</b>
+        <select id="tsf-tag" style="width:150px">
+          <option value="task">资产发现</option>
+          <option value="risk_cruising">风险巡航（URL）</option>
+        </select></div>
+      <div><b>策略</b>
+        <select id="tsf-policy" style="width:220px">
+          ${pols.map(p=>`<option value="${esc(p._id)}">${esc(p.name)}</option>`).join("")}
+        </select></div>
+      <div><b>方式</b>
+        <select id="tsf-type" style="width:150px" onchange="document.getElementById('tsf-date-row').style.display=this.value==='future_scan'?'':'none';document.getElementById('tsf-cron-row').style.display=this.value==='recurrent_scan'?'':'none'">
+          <option value="recurrent_scan">周期（cron）</option>
+          <option value="future_scan">定时一次</option>
+        </select></div>
+      <div id="tsf-cron-row"><b>cron</b> <input type="text" id="tsf-cron" value="0 */6 * * *" style="width:170px"/>
+        <span class="dim2" style="font-size:12px">分 时 日 月 周，最小间隔 6 小时</span></div>
+      <div id="tsf-date-row" style="display:none"><b>开始时间</b>
+        <input type="text" id="tsf-date" value="${defDate}" placeholder="YYYY-MM-DD HH:MM:SS" style="width:190px"/></div>
+    </div>
+    <button class="btn primary" style="width:100%;margin-top:12px" onclick="submitTaskSchedule()">创建</button>`);
+}
+
+async function submitTaskSchedule(){
+  const name = $("#tsf-name").value.trim();
+  const target = $("#tsf-target").value.trim();
+  const policyId = $("#tsf-policy").value;
+  if (!name || !target || !policyId){ toast("名称、目标、策略必填"); return; }
+  const payload = {
+    name, target, policy_id: policyId,
+    task_tag: $("#tsf-tag").value,
+    schedule_type: $("#tsf-type").value,
+    cron: "", start_date: "",
+  };
+  if (payload.schedule_type === "future_scan"){
+    payload.start_date = $("#tsf-date").value.trim();
+  } else {
+    payload.cron = $("#tsf-cron").value.trim();
+  }
+  const body = await api("/task_schedule/", {method:"POST", json:payload}).catch(e=>({message:String(e)}));
+  if (body.code === 200){ toast("计划任务已创建"); closeDrawer(); loadTaskSchedules(); }
+  else toast(body.message || "创建失败");
+}
+
+async function loadGithubSchedules(){
+  const box = $("#sch-box");
+  box.innerHTML = `
+    <div class="row">
+      <button class="btn primary" onclick="openGithubForm()">新建 GitHub 监控</button>
+      <button class="btn" onclick="renderSchedules('github')">刷新</button>
+      <span class="dim2" style="font-size:13px">按 cron 周期搜索 GitHub 泄露与敏感信息</span>
+    </div>
+    <div class="tblwrap" id="sch-table">加载中…</div>`;
+  const body = await api("/github_scheduler/?size=100").catch(e=>({}));
+  const {items} = pickList(body);
+  $("#sch-table").innerHTML = items.length ?
+    `<table><thead><tr><th>名称</th><th>关键字</th><th>cron</th><th>状态</th><th>更新时间</th><th>操作</th></tr></thead>
+     <tbody>${items.map(r=>{
+       const stopped = String(r.status||"").toLowerCase()==="stop";
+       return `<tr>
+        <td>${esc(r.name||"")}</td><td class="mono">${esc(r.keyword||"")}</td>
+        <td class="mono">${esc(r.cron||"—")}</td>
+        <td>${jobBadge(r.status)}</td>
+        <td class="mono dim">${esc(r.update_date||"—")}</td>
+        <td style="white-space:nowrap">
+          <a href="#" onclick="githubResults('${esc(r._id)}','${esc(r.keyword||r.name||"")}');return false">结果</a>
+          · ${stopped
+            ?`<a href="#" onclick="ghOp('recover','${esc(r._id)}');return false">恢复</a>`
+            :`<a href="#" onclick="ghOp('stop','${esc(r._id)}');return false">停止</a>`}
+          · <a href="#" onclick="ghDelete('${esc(r._id)}');return false" style="color:var(--bad)">删除</a>
+        </td></tr>`;
+     }).join("")}</tbody></table>` : '<div class="empty">暂无 GitHub 监控</div>';
+}
+
+async function ghOp(op, id){
+  const body = await api("/github_scheduler/"+op+"/", {method:"POST", json:{_id:[id]}})
+    .catch(e=>({message:String(e)}));
+  toast(body.code===200 ? "已"+(op==="stop"?"停止":"恢复") : (body.message||"操作失败"));
+  loadGithubSchedules();
+}
+
+async function ghDelete(id){
+  if (!confirm("确认删除该 GitHub 监控任务？")) return;
+  const body = await api("/github_scheduler/delete/", {method:"POST", json:{_id:[id]}})
+    .catch(e=>({message:String(e)}));
+  toast(body.code===200 ? "已删除" : (body.message||"删除失败"));
+  loadGithubSchedules();
+}
+
+function openGithubForm(){
+  openDrawer(`<h3>新建 GitHub 监控</h3>
+    <div class="dl">
+      <div><b>名称</b> <input type="text" id="ghf-name" style="width:240px"/></div>
+      <div><b>关键字</b> <input type="text" id="ghf-keyword" placeholder="organization 或仓库关键词" style="width:240px"/></div>
+      <div><b>cron</b> <input type="text" id="ghf-cron" value="0 */6 * * *" style="width:170px"/></div>
+    </div>
+    <button class="btn primary" style="width:100%;margin-top:12px" onclick="submitGithub()">创建</button>`);
+}
+
+async function submitGithub(){
+  const name = $("#ghf-name").value.trim();
+  const keyword = $("#ghf-keyword").value.trim();
+  if (!name || !keyword){ toast("名称与关键字必填"); return; }
+  const body = await api("/github_scheduler/", {method:"POST",
+    json:{name, keyword, cron: $("#ghf-cron").value.trim()}}).catch(e=>({message:String(e)}));
+  if (body.code === 200){ toast("GitHub 监控已创建"); closeDrawer(); loadGithubSchedules(); }
+  else toast(body.message || "创建失败");
+}
+
+async function githubResults(id, keyword){
+  const body = await api("/github_monitor_result/?github_scheduler_id="+id+"&size=20")
+    .catch(e=>({}));
+  const {items} = pickList(body);
+  openDrawer(`<h3>监控结果 · ${esc(keyword)}</h3>
+    ${items.length ? items.map(r=>`
+      <div class="card" style="margin-bottom:10px">
+        <div class="row" style="margin:0 0 4px">
+          <span class="mono">${esc(r.repo_full_name||"")}</span>
+          <span class="chip mono">${esc(r.path||"")}</span>
+        </div>
+        <div class="dim mono" style="font-size:12px;word-break:break-all">${esc((r.human_content||"").slice(0,200))}</div>
+      </div>`).join("") : '<div class="empty">暂无结果——等监控任务跑完</div>'}`);
+}
+
+/* ============================ 监控变化 ============================ */
+ROUTES.diff = async function(){
+  $("#view").innerHTML = `<h2 class="page">监控变化</h2>
+    <div class="row">
+      <input type="text" id="df-scope" placeholder="scope_id 过滤（可选）" style="width:260px"
+             onkeydown="if(event.key==='Enter')ROUTES.diff()"/>
+      <button class="btn primary" onclick="ROUTES.diff()">查询</button>
+    </div>
+    <div class="tblwrap" id="df-table">加载中…</div>`;
+  const scope = ($("#df-scope")||{}).value || "";
+  const body = await api("/monitor_diff/list/?limit=100"+(scope?"&scope_id="+encodeURIComponent(scope):""))
+    .catch(e=>({}));
+  const items = (body.data && body.data.items) || [];
+  const tbl = $("#df-table");
+  if (!items.length){ tbl.innerHTML = '<div class="empty">暂无变化记录——监控任务执行后自动生成</div>'; return; }
+  tbl.innerHTML = `<table><thead><tr><th>时间</th><th>目标</th><th>来源</th><th>轮次</th>
+      <th>新增域名</th><th>新增端口</th><th>新增/变化站点</th><th>证书临期</th><th>消失合计</th><th></th></tr></thead>
+    <tbody>${items.map(r=>{
+      const s = r.summary||{};
+      const expiring = s.certs?.expiring_total||0;
+      return `<tr><td class="mono">${esc(r.run_date||"")}</td><td>${esc(r.target||"")}</td>
+        <td><span class="badge b-info">${esc(r.source||"")}</span></td>
+        <td class="mono">${esc(r.run_number||"")}</td>
+        <td class="mono">${s.domains?.added_total||0}</td>
+        <td class="mono">${s.ports?.added_total||0}</td>
+        <td class="mono">${(s.sites?.added_total||0)} / ${(s.sites?.changed_total||0)}</td>
+        <td class="mono">${expiring?`<b style="color:var(--bad)">${expiring}</b>`:0}</td>
+        <td class="mono">${(s.domains?.removed_total||0)+(s.ports?.removed_total||0)+(s.sites?.removed_total||0)}</td>
+        <td><a href="#" onclick="diffDetail('${r._id}');return false">明细</a></td></tr>`;
+    }).join("")}</tbody></table>`;
+};
+async function diffDetail(id){
+  const body = await api("/monitor_diff/detail/?diff_id="+id).catch(e=>({}));
+  const d = ((body.data||{}).diff||{}).diff || {};
+  const sec = (title, obj) => {
+    const o = obj||{};
+    return `<div style="margin:10px 0"><b style="color:var(--acc)">${title}</b>
+      ${o.added&&o.added.length?`<div class="chips">${o.added.map(x=>`<span class="chip mono">+ ${esc(x)}</span>`).join("")}</div>`:""}
+      ${o.changed&&o.changed.length?`<div class="chips">${o.changed.map(x=>`<span class="chip mono">~ ${esc(x)}</span>`).join("")}</div>`:""}
+      ${o.expiring&&o.expiring.length?`<div class="chips">${o.expiring.map(x=>`<span class="chip mono" style="color:var(--bad)">! ${esc(x)}</span>`).join("")}</div>`:""}
+      ${o.removed&&o.removed.length?`<div class="chips">${o.removed.map(x=>`<span class="chip mono" style="color:var(--bad)">- ${esc(x)}</span>`).join("")}</div>`:""}
+      ${!(o.added||[]).length&&!(o.removed||[]).length&&!(o.changed||[]).length&&!(o.expiring||[]).length?'<div class="dim2">无</div>':""}</div>`;
+  };
+  openDrawer(`<h3>变化明细（${esc((body.data&&body.data.diff&&body.data.diff.target)||"")}）</h3>
+    ${sec("域名", d.domains)}${sec("IP:端口", d.ports)}${sec("站点", d.sites)}
+    ${sec("页面标题", d.titles)}${sec("证书", d.certs)}${sec("APP", d.apps)}`);
+}
+
+/* ============================ 风险中心 ============================ */
+let riskTab = "vuln", riskPage = 1, riskRaw = [];
+
+ROUTES.risks = function(){ renderRisks("vuln"); };
+
+async function renderRisks(tab){
+  riskTab = tab; riskPage = 1;
+  const statsB = await api("/stats/summary/").catch(e=>({}));
+  const sev = ((statsB.data||{}).health||{}).vuln_by_severity || {};
+  const sevChip = ([k,label])=>
+    `<span class="chip sev-${k}" style="cursor:default"><b>${sev[k]??0}</b> ${label}</span>`;
+  $("#view").innerHTML = `
+    <h2 class="page">风险中心</h2>
+    <div class="chips">
+      ${[["critical","严重"],["high","高危"],["medium","中危"],["low","低危"]].map(sevChip).join("")}
+    </div>
+    <div class="tabs" style="margin-top:12px">
+      <button class="btn ${tab==="vuln"?"primary":""}" onclick="renderRisks('vuln')">漏洞</button>
+      <button class="btn ${tab==="nuclei"?"primary":""}" onclick="renderRisks('nuclei')">Nuclei</button>
+    </div>
+    <div id="risk-box"></div>`;
+  (tab==="vuln"?loadRiskVuln:loadRiskNuclei)();
+}
+
+async function loadRiskVuln(){
+  $("#risk-box").innerHTML = `
+    <div class="row">
+      <select id="rv-sev" style="width:110px">
+        <option value="">全部等级</option>
+        ${["critical","high","medium","low"].map(s=>`<option value="${s}">${s}</option>`).join("")}
+      </select>
+      <input type="text" id="rv-vul" placeholder="漏洞名" style="width:170px"/>
+      <input type="text" id="rv-target" placeholder="目标" style="width:170px"/>
+      <button class="btn primary" onclick="riskPage=1;loadRiskVuln()">查询</button>
+      <button class="btn danger" onclick="riskBatchDelete()">批量删除</button>
+      <button class="btn" onclick="loadRiskVuln()">刷新</button>
+      <span class="dim2" style="font-size:13px" id="rv-count"></span>
+    </div>
+    <div class="tblwrap" id="risk-table">加载中…</div>
+    <div id="risk-pager"></div>`;
+  await fetchRisks();
+}
+
+async function loadRiskNuclei(){
+  $("#risk-box").innerHTML = `
+    <div class="row">
+      <select id="rv-sev" style="width:110px">
+        <option value="">全部等级</option>
+        ${["critical","high","medium","low"].map(s=>`<option value="${s}">${s}</option>`).join("")}
+      </select>
+      <input type="text" id="rv-target" placeholder="目标 / 模板 ID" style="width:220px"/>
+      <button class="btn primary" onclick="riskPage=1;loadRiskNuclei()">查询</button>
+      <button class="btn danger" onclick="riskBatchDelete()">批量删除</button>
+      <button class="btn" onclick="loadRiskNuclei()">刷新</button>
+      <span class="dim2" style="font-size:13px" id="rv-count"></span>
+    </div>
+    <div class="tblwrap" id="risk-table">加载中…</div>
+    <div id="risk-pager"></div>`;
+  await fetchRisks();
+}
+
+function riskChecked(){
+  return [...document.querySelectorAll(".rk-ck:checked")].map(c=>c.dataset.id);
+}
+
+async function riskBatchDelete(){
+  const ids = riskChecked();
+  if (!ids.length){ toast("请先勾选记录"); return; }
+  if (!confirm("确认删除选中的 " + ids.length + " 条风险记录？")) return;
+  await api("/"+(riskTab==="vuln"?"vuln":"nuclei_result")+"/delete/",
+    {method:"POST", json:{_id: ids}});
+  toast("已删除");
+  fetchRisks();
+}
+
+async function fetchRisks(){
+  const box = $("#risk-table");
+  if (!box) return;
+  box.innerHTML = '<div class="empty">加载中…</div>';
+  const q = ["page="+riskPage, "size=25"];
+  const sev = ($("#rv-sev")||{}).value || "";
+  const target = ($("#rv-target")||{}).value || "";
+  if (riskTab === "vuln"){
+    const vul = ($("#rv-vul")||{}).value || "";
+    if (sev) q.push("severity="+sev);
+    if (vul) q.push("vul_name="+encodeURIComponent(vul));
+    if (target) q.push("target="+encodeURIComponent(target));
+  } else {
+    if (sev) q.push("vuln_severity="+sev);
+    if (target) q.push("target="+encodeURIComponent(target));
+  }
+  const body = await api("/"+(riskTab==="vuln"?"vuln":"nuclei_result")+"/?"+q.join("&"))
+    .catch(e=>({}));
+  const {items, total} = pickList(body);
+  riskRaw = items;
+  const count = $("#rv-count");
+  if (count) count.textContent = `共 ${total} 条`;
+  const stop = ' onclick="event.stopPropagation()"';
+  if (riskTab === "vuln"){
+    box.innerHTML = items.length ?
+      `<table><thead><tr><th><input type="checkbox" onclick="document.querySelectorAll('.rk-ck').forEach(c=>c.checked=this.checked)"/></th>
+        <th>漏洞</th><th>等级</th><th>插件</th><th>目标</th><th>URL</th><th></th></tr></thead>
+      <tbody>${items.map((r,i)=>`<tr>
+        <td><input type="checkbox" class="rk-ck" data-id="${esc(r._id)}"/></td>
+        <td>${esc(r.vul_name||"")}</td>
+        <td><span class="sev-${esc(String(r.severity||"low").toLowerCase())}">${esc(r.severity||"low")}</span></td>
+        <td>${esc(r.plg_name||"")}</td>
+        <td class="mono" style="max-width:180px">${esc(r.target||"")}</td>
+        <td class="mono" style="max-width:220px"><a href="${esc(r.url||"")}" target="_blank"${stop}>${esc((r.url||"").slice(0,40))}</a></td>
+        <td><a href="#" onclick="riskDetail(${i});return false">详情</a></td></tr>`).join("")}</tbody></table>`
+      : '<div class="empty">暂无漏洞记录</div>';
+  } else {
+    box.innerHTML = items.length ?
+      `<table><thead><tr><th><input type="checkbox" onclick="document.querySelectorAll('.rk-ck').forEach(c=>c.checked=this.checked)"/></th>
+        <th>模板</th><th>漏洞</th><th>等级</th><th>URL</th><th></th></tr></thead>
+      <tbody>${items.map((r,i)=>`<tr>
+        <td><input type="checkbox" class="rk-ck" data-id="${esc(r._id)}"/></td>
+        <td class="mono">${esc(r.template_id||"")}</td>
+        <td>${esc(r.vuln_name||"")}</td>
+        <td><span class="sev-${esc(String(r.vuln_severity||"low").toLowerCase())}">${esc(r.vuln_severity||"")}</span></td>
+        <td class="mono" style="max-width:300px">${esc((r.vuln_url||"").slice(0,60))}</td>
+        <td><a href="#" onclick="riskDetail(${i});return false">详情</a></td></tr>`).join("")}</tbody></table>`
+      : '<div class="empty">暂无 Nuclei 结果</div>';
+  }
+  const pager = $("#risk-pager");
+  if (pager) pager.innerHTML = pagerHtml("risk", riskPage, 25, total);
+}
+
+function riskDetail(idx){
+  const x = riskRaw[idx];
+  if (!x) return;
+  const rows = Object.entries(x)
+    .filter(([k])=>k !== "_id")
+    .map(([k,v])=>{
+      let display = typeof v === "object" ? JSON.stringify(v) : String(v ?? "");
+      if (display.length > 300) display = display.slice(0,300) + "…";
+      return `<div><b>${esc(k)}</b> ${esc(display)}</div>`;
+    }).join("");
+  const curl = x.curl_command
+    ? `<h4>复现命令</h4>
+       <textarea readonly style="width:100%;height:90px;font-family:var(--mono);font-size:12px"
+         onclick="this.select()">${esc(x.curl_command)}</textarea>
+       <button class="btn sm" style="margin-top:6px"
+         onclick="navigator.clipboard.writeText(this.previousElementSibling.value).then(()=>toast('已复制'))">复制 curl</button>`
+    : "";
+  openDrawer(`<h3>${esc(x.vul_name||x.vuln_name||"风险详情")}</h3>
+    <div class="dl">${rows}</div>${curl}`);
+}
+
+/* ============================ 插件在线更新 ============================ */
+async function pluginLoad(){
+  const body = await api("/plugin_update/status/").catch(e=>({}));
+  const d = body.data||{};
+  const reg = $("#plugin-registry");
+  if (reg) reg.textContent = d.registry_configured ? "注册表已配置" : "未配置注册表（config.yaml → PLUGIN_REGISTRY_URL）";
+  const items = d.installed||[];
+  const el = $("#plugin-list");
+  if (!el) return;
+  el.innerHTML = items.length ?
+    `<table><thead><tr><th>插件</th><th>版本</th><th>类型</th><th>安装时间</th></tr></thead>
+     <tbody>${items.map(r=>`<tr><td>${esc(r.plugin)}</td><td class="mono">${esc(r.version)}</td>
+       <td><span class="badge b-info">${esc(r.kind)}</span></td>
+       <td class="mono dim">${esc(r.install_date||"")}</td></tr>`).join("")}</tbody></table>`
+    : '<div class="empty">暂无已安装插件</div>';
+}
+async function pluginCheck(){
+  const body = await api("/plugin_update/check/", {method:"POST"}).catch(e=>({}));
+  const items = (body.data&&body.data.items)||[];
+  if (!items.length){ toast(body.msg || "检查失败或注册表为空"); return; }
+  const rows = items.map(r=>`<tr><td>${esc(r.plugin)}</td>
+    <td class="mono">${esc(r.installed_version||"—")}</td>
+    <td class="mono">${esc(r.version)}</td>
+    <td><span class="badge ${r.status==="current"?"b-ok":"b-warn"}">${esc(r.status)}</span></td>
+    <td>${r.status!=="current"?`<button class="btn" onclick="pluginInstall('${esc(r.plugin)}')">安装</button>`:""}</td></tr>`).join("");
+  const el = $("#plugin-list");
+  if (el) el.innerHTML = `<table><thead><tr><th>插件</th><th>已装</th><th>最新</th><th>状态</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+async function pluginInstall(name){
+  const body = await api("/plugin_update/install/", {method:"POST", json:{plugin:name}}).catch(e=>({}));
+  toast(body.code===200 ? ("已安装 " + name) : (body.msg||"安装失败"));
+  pluginLoad();
+}
+
+/* ============================ 扫描引擎（执行图 + 插件更新） ============================ */
+ROUTES.engines = async function(){
+  $("#view").innerHTML = `
+    <h2 class="page">扫描引擎</h2>
+    <div class="card" style="margin-bottom:16px">
+      <div class="row" style="margin:0 0 10px">
+        <div style="font-size:15px;font-weight:600">执行图</div>
+        <select id="eg-policy" style="min-width:220px"></select>
+        <button class="btn primary" onclick="enginesGraph()">生成执行图</button>
+      </div>
+      <div class="dim2" style="font-size:13px;margin-bottom:6px">按策略展示各阶段的引擎编排；策略管理在「任务策略」页</div>
+      <div id="graph-box"><div class="dim2" style="font-size:13px">选择策略后生成</div></div>
+    </div>
+    <div class="card">
+      <div style="font-size:15px;font-weight:600">插件在线更新</div>
+      <div class="dim2" style="font-size:13px;margin:6px 0 10px">指纹/POC 插件从管理员配置的注册表安装（sha256 校验 + SSRF 防护），配置项 PLUGIN_REGISTRY_URL</div>
+      <div class="row" style="margin:0">
+        <button class="btn" onclick="pluginCheck()">检查更新</button>
+        <button class="btn" onclick="pluginLoad()">刷新</button>
+        <span id="plugin-registry" class="dim2"></span>
+      </div>
+      <div id="plugin-list" class="tblwrap" style="margin-top:10px">加载中…</div>
+    </div>`;
+  const polB = await api("/policy/?size=200").catch(e=>({}));
+  const pols = (polB.data&&polB.data.items)||[];
+  const sel = $("#eg-policy");
+  sel.innerHTML = pols.map(p=>`<option value="${esc(p._id)}">${esc(p.name)}</option>`).join("");
+  pluginLoad();
+};
+
+async function enginesGraph(){
+  const id = ($("#eg-policy")||{}).value;
+  if (!id){ toast("请选择策略"); return; }
+  const box = $("#graph-box");
+  box.innerHTML = '<div class="empty">加载中…</div>';
+  const body = await api("/policy_yaml/graph/?policy_id="+encodeURIComponent(id)).catch(e=>({}));
+  if (body.code!==200){ box.innerHTML = `<div class="empty">${esc((body.data||{}).error||"加载失败")}</div>`; return; }
+  const g = body.data.graph;
+  const PH = {light:"轻量探测",heavy_top:"重量探测（Top1000）",heavy_full:"全量扫描",
+              post:"后置深化",post_finalize:"收尾统计"};
+  box.innerHTML = `
+    <div class="dim2" style="font-size:13px;margin-bottom:8px">启用 ${g.summary.enabled} · 条件 ${g.summary.auto} · 关闭 ${g.summary.disabled} · 共 ${g.summary.total_stages} 阶段</div>
+    ${g.phases.map(p=>{
+      const nodes = p.nodes.map(n=>{
+        const cls = n.state==="enabled"?"b-ok":(n.state==="disabled"?"b-dim":"b-warn");
+        const deco = n.state==="disabled" ? "text-decoration:line-through;opacity:.55" : "";
+        return `<span class="badge ${cls}" style="${deco};margin:2px 4px 2px 0" title="${n.stage}">${esc(n.name)}</span>`;
+      }).join('<span class="dim2">→</span>');
+      return `<div style="margin:8px 0"><span class="dim2" style="font-size:12px;display:block;margin-bottom:4px">${PH[p.phase]||p.phase}</span>${nodes}</div>`;
+    }).join("")}`;
+}
+
+/* ============================ 指纹库 ============================ */
+let fpRaw = [];
+
+ROUTES.fingerprints = async function(){
+  $("#view").innerHTML = `
+    <h2 class="page">指纹库</h2>
+    <div class="row">
+      <input type="text" id="fp-q" placeholder="按名称搜索" style="width:200px"
+             onkeydown="if(event.key==='Enter')loadFingerprints()"/>
+      <button class="btn primary" onclick="loadFingerprints()">查询</button>
+      <button class="btn" onclick="openFpForm()">新建指纹</button>
+      <button class="btn" onclick="openFpUpload()">上传 YAML</button>
+      <button class="btn" onclick="fpExport()">导出 YAML</button>
+      <button class="btn danger" onclick="fpBatchDelete()">批量删除</button>
+      <button class="btn" onclick="ROUTES.fingerprints()">刷新</button>
+      <span class="dim2" style="font-size:13px" id="fp-count"></span>
+    </div>
+    <div class="grid g2" style="margin-bottom:14px">
+      <div class="card"><div style="margin-bottom:8px">指纹命中 Top8（历史任务统计）</div><div id="fp-top">加载中…</div></div>
+      <div class="card"><div style="margin-bottom:8px">说明</div>
+        <div class="dim2" style="font-size:13px;line-height:1.9">
+          规则语法：is_http / body="关键词" / header="Server: nginx" / icon_hash="数字"。
+          命中后写入站点 finger；命中统计来自任务归档。</div></div>
+    </div>
+    <div class="tblwrap" id="fp-table">加载中…</div>`;
+  loadFingerprints();
+  fpTop();
+};
+
+async function loadFingerprints(){
+  const box = $("#fp-table");
+  if (!box) return;
+  box.innerHTML = '<div class="empty">加载中…</div>';
+  const kw = ($("#fp-q")||{}).value || "";
+  const body = await api("/fingerprint/?size=200"+(kw?"&name="+encodeURIComponent(kw):""))
+    .catch(e=>({}));
+  const {items, total} = pickList(body);
+  fpRaw = items;
+  const count = $("#fp-count");
+  if (count) count.textContent = `共 ${total} 条`;
+  box.innerHTML = items.length ?
+    `<table><thead><tr>
+      <th><input type="checkbox" onclick="document.querySelectorAll('.fp-ck').forEach(c=>c.checked=this.checked)"/></th>
+      <th>名称</th><th>规则</th><th>更新时间</th></tr></thead>
+     <tbody>${items.map(r=>`<tr>
+      <td><input type="checkbox" class="fp-ck" data-id="${esc(r._id)}"/></td>
+      <td>${esc(r.name||"")}</td>
+      <td class="mono" style="max-width:380px"><span title="${esc(r.human_rule||"")}">${esc((r.human_rule||"").slice(0,70))}</span></td>
+      <td class="mono dim">${esc((r.update_date||"").slice(0,19))}</td></tr>`).join("")}</tbody></table>`
+    : '<div class="empty">暂无指纹——新建或上传 YAML</div>';
+}
+
+async function fpTop(){
+  const el = $("#fp-top");
+  if (!el) return;
+  const body = await api("/stat_finger/?size=500").catch(e=>({}));
+  const items = pickList(body).items;
+  const sum = {};
+  items.forEach(r=>{ sum[r.name] = (sum[r.name]||0) + (r.cnt||0); });
+  const top = Object.entries(sum).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  el.innerHTML = top.length ? top.map(([name,val])=>`
+    <div class="bar-row"><span class="name mono" title="${esc(name)}">${esc(name)}</span>
+    <div class="bar"><i style="width:${Math.round(val/top[0][1]*100)}%"></i></div>
+    <span class="num">${val}</span></div>`).join("") : '<div class="dim2">暂无统计</div>';
+}
+
+function openFpForm(){
+  openDrawer(`<h3>新建指纹</h3>
+    <div class="dl">
+      <div><b>名称</b> <input type="text" id="fpf-name" placeholder="如通达 OA" style="width:240px"/></div>
+    </div>
+    <h4>规则（human_rule）</h4>
+    <textarea id="fpf-rule" style="width:100%;height:110px;font-family:var(--mono);font-size:13px"
+      placeholder='is_http && body="oa管理系统"'></textarea>
+    <div class="dim2" style="font-size:13px;margin-top:6px">
+      可用判定：is_http、body="…"、header="…"、title="…"、icon_name="…"、icon_hash="…"、port="…"、cert="…"，支持 && || 组合</div>
+    <button class="btn primary" style="width:100%;margin-top:12px" onclick="submitFp()">保存</button>`);
+}
+
+async function submitFp(){
+  const name = $("#fpf-name").value.trim();
+  const rule = $("#fpf-rule").value.trim();
+  if (!name || !rule){ toast("名称与规则必填"); return; }
+  const body = await api("/fingerprint/", {method:"POST", json:{name, human_rule: rule}})
+    .catch(e=>({message:String(e)}));
+  if (body.code === 200){ toast("指纹已保存"); closeDrawer(); loadFingerprints(); }
+  else toast(body.message || "保存失败（规则校验不通过会提示）");
+}
+
+function openFpUpload(){
+  openDrawer(`<h3>上传指纹 YAML</h3>
+    <div class="dim2" style="font-size:13px;margin-bottom:10px">文件格式：- name: 名称 / rule: 规则 的列表</div>
+    <input type="file" id="fp-file" accept=".yml,.yaml,.txt" style="width:100%"/>
+    <label class="chk" style="margin-top:10px"><input type="checkbox" id="fp-update"/> 重复规则时覆盖更新（默认跳过）</label>
+    <button class="btn primary" style="width:100%;margin-top:12px" onclick="fpUpload()">上传导入</button>`);
+}
+
+async function fpUpload(){
+  const f = ($("#fp-file")||{}).files?.[0];
+  if (!f){ toast("请选择 YAML 文件"); return; }
+  const fd = new FormData();
+  fd.append("file", f);
+  fd.append("update", $("#fp-update").checked ? "true" : "");
+  const r = await fetch(API+"/fingerprint/upload/",
+    {method:"POST", headers:{"Token": token()}, body: fd});
+  const body = await r.json().catch(()=>({}));
+  if (body.code === 200){
+    const d = body.data||{};
+    toast(`成功 ${d.success_cnt} · 重复 ${d.repeat_cnt} · 更新 ${d.update_cnt} · 失败 ${d.error_cnt}`);
+    closeDrawer(); loadFingerprints();
+  } else toast((body.data&&body.data.msg)||body.message||"上传失败");
+}
+
+async function fpExport(){
+  try{
+    const r = await fetchRaw("/fingerprint/export/");
+    const blob = await r.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "fingerprint_export.yml"; a.click();
+  }catch(e){ toast("导出失败"); }
+}
+
+async function fpBatchDelete(){
+  const ids = [...document.querySelectorAll(".fp-ck:checked")].map(c=>c.dataset.id);
+  if (!ids.length){ toast("请先勾选指纹"); return; }
+  if (!confirm("确认删除选中的 " + ids.length + " 条指纹？")) return;
+  await api("/fingerprint/delete/", {method:"POST", json:{_id: ids}});
+  toast("已删除");
+  loadFingerprints();
+}
+
+/* ============================ POC 库 ============================ */
+let pocPage = 1, pocSize = 25;
+
+ROUTES.poc = async function(){
+  $("#view").innerHTML = `
+    <h2 class="page">POC 库</h2>
+    <div class="row">
+      <input type="text" id="poc-plugin" placeholder="插件 ID" style="width:170px"/>
+      <input type="text" id="poc-vul" placeholder="漏洞名称" style="width:170px"/>
+      <select id="poc-type" style="width:110px">
+        <option value="">全部类型</option><option value="poc">poc</option><option value="brute">brute</option>
+      </select>
+      <button class="btn primary" onclick="pocPage=1;loadPoc()">查询</button>
+      <button class="btn" onclick="pocSync()">同步 NPoC</button>
+      <button class="btn danger" onclick="pocClear()">清空</button>
+      <button class="btn" onclick="ROUTES.poc()">刷新</button>
+      <span class="dim2" style="font-size:13px" id="poc-count"></span>
+    </div>
+    <div class="tblwrap" id="poc-table">加载中…</div>
+    <div id="poc-pager"></div>`;
+  loadPoc();
+};
+
+async function loadPoc(){
+  const box = $("#poc-table");
+  if (!box) return;
+  box.innerHTML = '<div class="empty">加载中…</div>';
+  const q = ["page="+pocPage, "size="+pocSize];
+  const plugin = ($("#poc-plugin")||{}).value || "";
+  const vul = ($("#poc-vul")||{}).value || "";
+  const type = ($("#poc-type")||{}).value || "";
+  if (plugin) q.push("plugin_name="+encodeURIComponent(plugin));
+  if (vul) q.push("vul_name="+encodeURIComponent(vul));
+  if (type) q.push("plugin_type="+type);
+  const body = await api("/poc/?"+q.join("&")).catch(e=>({}));
+  const {items, total} = pickList(body);
+  const count = $("#poc-count");
+  if (count) count.textContent = `共 ${total} 条`;
+  box.innerHTML = items.length ?
+    `<table><thead><tr><th>插件 ID</th><th>漏洞名称</th><th>应用</th><th>协议</th><th>类型</th><th>分类</th></tr></thead>
+     <tbody>${items.map(r=>`<tr>
+      <td class="mono">${esc(r.plugin_name||"")}</td>
+      <td>${esc(r.vul_name||"")}</td>
+      <td>${esc(r.app_name||"")}</td>
+      <td class="mono">${esc(r.scheme||"")}</td>
+      <td><span class="badge ${r.plugin_type==="brute"?"b-warn":"b-info"}">${esc(r.plugin_type||"")}</span></td>
+      <td class="dim">${esc(r.category||"")}</td></tr>`).join("")}</tbody></table>`
+    : '<div class="empty">暂无 POC——点「同步 NPoC」从内置插件库导入</div>';
+  $("#poc-pager").innerHTML = pagerHtml("poc", pocPage, pocSize, total);
+}
+
+async function pocSync(){
+  const body = await api("/poc/sync/").catch(e=>({}));
+  if (body.code === 200) toast("同步完成，共 " + ((body.data||{}).plugin_cnt ?? "?") + " 个插件");
+  else toast(body.message || "同步失败");
+  loadPoc();
+}
+
+async function pocClear(){
+  if (!confirm("确认清空整个 POC 库？")) return;
+  if (!confirm("再次确认：清空后需重新「同步 NPoC」才能恢复。")) return;
+  const body = await api("/poc/delete/").catch(e=>({}));
+  toast(body.code === 200 ? ("已清空 " + ((body.data||{}).delete_cnt ?? "") + " 条") : (body.message||"失败"));
+  loadPoc();
+}
+
+/* ============================ AI 配置 ============================ */
+let aiConfig = {};
+let aiJudgeTimer = null;
+
+ROUTES.ai = async function(){
+  const body = await api("/ai/config").catch(e=>({}));
+  aiConfig = body.data || {};
+  const provs = aiConfig.providers || [];
+  $("#view").innerHTML = `
+    <h2 class="page">AI 配置</h2>
+    <div class="row">
+      <button class="btn primary" onclick="openAiForm()">新增供应商</button>
+      <button class="btn" onclick="ROUTES.ai()">刷新</button>
+      <span class="badge ${aiConfig.ready?"b-ok":"b-dim"}">${aiConfig.ready?"已就绪":"未就绪"}</span>
+      <span class="dim2" style="font-size:13px">供应商用于站点 AI 研判（任务开关 ai_judge）</span>
+    </div>
+    <div id="ai-provs">${provs.length ? provs.map(p=>`
+      <div class="card" style="margin-bottom:12px">
+        <div class="row" style="margin:0">
+          <b style="font-size:14px">${esc(p.name||p.id)}</b>
+          <span class="badge b-info">${esc(p.format)}</span>
+          ${p.id===aiConfig.active_id?'<span class="badge b-ok">启用中</span>':""}
+          ${p.configured?'':'<span class="badge b-bad">未配 Key</span>'}
+          <span class="spacer"></span>
+          <button class="btn sm" onclick="aiTest('${esc(p.id)}')">测试连接</button>
+          ${p.id===aiConfig.active_id?"":`<button class="btn sm" onclick="aiActivate('${esc(p.id)}')">启用</button>`}
+          <button class="btn sm" onclick="openAiForm('${esc(p.id)}')">编辑</button>
+          <button class="btn sm danger" onclick="aiDelete('${esc(p.id)}')">删除</button>
+        </div>
+        <div class="dl" style="margin-top:8px">
+          <div><b>地址</b> <span class="mono">${esc(p.base_url)}</span></div>
+          <div><b>模型</b> <span class="mono">${esc(p.model)}</span></div>
+          <div><b>Key</b> <span class="mono">${esc(p.api_key_masked||"—")}</span></div>
+        </div>
+      </div>`).join("") : '<div class="card empty">暂无供应商——新增一个（OpenAI 兼容或 Anthropic 格式）</div>'}</div>
+    <div class="card" style="margin-top:16px">
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">批量 AI 研判</div>
+      <div class="row" style="margin:0 0 8px">
+        <textarea id="aj-ids" placeholder="站点 _id，每行一个（资产检索页可复制）"
+                  style="flex:1;height:90px;font-family:var(--mono);font-size:12px"></textarea>
+      </div>
+      <div class="row" style="margin:0">
+        <select id="aj-coll" style="width:160px">
+          <option value="site">site 集合</option><option value="asset_site">asset_site 集合</option>
+        </select>
+        <input type="text" id="aj-scope" placeholder="研判范围说明" value="批量研判" style="width:200px"/>
+        <button class="btn primary" onclick="aiJudge()">提交研判</button>
+        <span class="dim2" style="font-size:13px">单次最多 50 个；结果写回站点 ai_state / ai_summary / ai_priority</span>
+      </div>
+      <div id="ai-judge-result" style="margin-top:12px"></div>
+    </div>`;
+};
+
+function openAiForm(id){
+  const p = (aiConfig.providers||[]).find(x=>x.id===id) || {};
+  openDrawer(`<h3>${id?("编辑供应商"):"新增供应商"}</h3>
+    <div class="dl">
+      <div><b>名称</b> <input type="text" id="aif-name" value="${esc(p.name||"")}" placeholder="如 DeepSeek" style="width:230px"/></div>
+      <div><b>格式</b>
+        <select id="aif-format" style="width:180px">
+          <option value="openai" ${p.format!=="anthropic"?"selected":""}>OpenAI 兼容</option>
+          <option value="anthropic" ${p.format==="anthropic"?"selected":""}>Anthropic</option>
+        </select></div>
+      <div><b>地址</b> <input type="text" id="aif-url" value="${esc(p.base_url||"")}" placeholder="https://api.deepseek.com" style="width:260px"/></div>
+      <div><b>Key</b> <input type="text" id="aif-key" value="" placeholder="${p.configured?"留空保持原值":"sk-..."}" style="width:260px"/></div>
+      <div><b>模型</b> <input type="text" id="aif-model" value="${esc(p.model||"")}" list="aif-models" style="width:200px"/></div>
+    </div>
+    <datalist id="aif-models"></datalist>
+    <button class="btn" style="margin-top:10px" onclick="aiFetchModels()">获取模型列表</button>
+    <button class="btn primary" style="width:100%;margin-top:12px" onclick="aiSave('${esc(id||"")}')">保存并启用</button>`);
+}
+
+async function aiFetchModels(){
+  const payload = {
+    format: $("#aif-format").value,
+    base_url: $("#aif-url").value.trim(),
+    api_key: $("#aif-key").value.trim(),
+  };
+  const body = await api("/ai/models", {method:"POST", json:payload}).catch(e=>({}));
+  const d = body.data||{};
+  if (!d.ok){ toast(d.message || "获取失败"); return; }
+  $("#aif-models").innerHTML = d.models.map(m=>`<option value="${esc(m)}">`).join("");
+  toast("已获取 " + d.models.length + " 个模型，输入框可下拉选择");
+}
+
+async function aiSave(id){
+  const payload = {
+    name: $("#aif-name").value.trim(),
+    format: $("#aif-format").value,
+    base_url: $("#aif-url").value.trim(),
+    model: $("#aif-model").value.trim(),
+    api_key: $("#aif-key").value.trim(),
+  };
+  if (id) payload.id = id;
+  if (!payload.base_url || !payload.model){ toast("地址与模型必填"); return; }
+  const body = await api("/ai/config", {method:"POST", json:payload}).catch(e=>({message:String(e)}));
+  if (body.code === 200){ toast("已保存并启用"); closeDrawer(); ROUTES.ai(); }
+  else toast(body.message || "保存失败");
+}
+
+async function aiTest(id){
+  const btn = event && event.target;
+  if (btn){ btn.disabled = true; btn.textContent = "测试中…"; }
+  const body = await api("/ai/test", {method:"POST", json:{id}}).catch(e=>({}));
+  if (btn){ btn.disabled = false; btn.textContent = "测试连接"; }
+  const d = body.data||{};
+  toast(d.ok ? "连接正常" : ("连接失败：" + (d.message || d.error || "")));
+}
+
+async function aiActivate(id){
+  const body = await api("/ai/activate", {method:"POST", json:{id}}).catch(e=>({message:String(e)}));
+  toast(body.code===200 ? "已启用" : (body.message||"失败"));
+  ROUTES.ai();
+}
+
+async function aiDelete(id){
+  if (!confirm("确认删除该供应商？")) return;
+  const body = await api("/ai/delete", {method:"POST", json:{id}}).catch(e=>({message:String(e)}));
+  toast(body.code===200 ? "已删除" : (body.message||"删除失败"));
+  ROUTES.ai();
+}
+
+async function aiJudge(){
+  const ids = $("#aj-ids").value.trim().split(/\s+/).filter(Boolean);
+  if (!ids.length){ toast("请填入站点 _id"); return; }
+  const payload = {site_ids: ids, collection: $("#aj-coll").value,
+                   scope: $("#aj-scope").value.trim() || "批量研判"};
+  const body = await api("/ai/judge", {method:"POST", json:payload}).catch(e=>({message:String(e)}));
+  const d = body.data||{};
+  if (!d.ok){ toast(d.message || "提交失败"); return; }
+  toast(`已提交 ${d.site_count} 个站点（任务异步执行）`);
+  aiJudgePoll(ids, payload.collection, 10);
+}
+
+async function aiJudgePoll(ids, collection, rounds){
+  clearInterval(aiJudgeTimer);
+  const box = $("#ai-judge-result");
+  const fetchOnce = async ()=>{
+    const body = await api("/ai/judge_result", {method:"POST", json:{site_ids: ids, collection}})
+      .catch(e=>({}));
+    const items = (body.data&&body.data.items)||[];
+    if (!box) { clearInterval(aiJudgeTimer); return; }
+    box.innerHTML = items.length ?
+      `<table><thead><tr><th>站点</th><th>标题</th><th>状态</th><th>优先级</th><th>结论</th></tr></thead>
+       <tbody>${items.map(r=>{
+         const st = esc(r.ai_state||"pending");
+         const cls = st==="done"?"b-ok":(st==="error"?"b-bad":"b-info");
+         return `<tr><td class="mono">${esc((r.site||"").slice(0,40))}</td>
+          <td>${esc(r.title||"")}</td>
+          <td><span class="badge ${cls}">${st}</span></td>
+          <td class="mono">${esc(r.ai_priority??"—")}</td>
+          <td style="color:var(--dim);font-size:13px">${esc((r.ai_summary||r.ai_error||"—").slice(0,80))}</td></tr>`;
+       }).join("")}</tbody></table>`
+      : '<div class="dim2">无结果</div>';
+    return items.every(r=>r.ai_state==="done"||r.ai_state==="error");
+  };
+  let left = rounds;
+  await fetchOnce();
+  aiJudgeTimer = setInterval(async ()=>{
+    left -= 1;
+    const settled = await fetchOnce();
+    if (settled || left <= 0) clearInterval(aiJudgeTimer);
+  }, 4000);
+}
+
+/* ============================ 数据源接入（API 接入） ============================ */
+let srcPolicies = [];
+
+ROUTES.sources = async function(){
+  $("#view").innerHTML = `
+    <h2 class="page">数据源接入</h2>
+    <div class="row">
+      <button class="btn" onclick="ROUTES.sources()">刷新</button>
+      <span class="dim2" style="font-size:13px">空间测绘 / 被动收集 / 情报平台的 API 凭证统一管理——保存落盘后全进程热生效（任务执行点自动同步，无需重启）</span>
+    </div>
+    <div id="src-groups"><div class="empty">加载中…</div></div>
+    <div class="card" style="margin-top:16px">
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">FOFA 采集任务</div>
+      <div class="dim2" style="font-size:13px;margin-bottom:10px">按 FOFA 查询语句拉取 IP 资产并下发扫描任务（使用上方 FOFA Key）</div>
+      <div class="row" style="margin:0 0 8px">
+        <input type="text" id="ft-query" placeholder='FOFA 查询，如 app="RabbitMQ" && country="CN"'
+               style="flex:1;min-width:320px" onkeydown="if(event.key==='Enter')fofaTestQuery()"/>
+        <button class="btn" onclick="fofaTestQuery()">测试查询</button>
+        <span class="dim2" style="font-size:13px" id="ft-hint"></span>
+      </div>
+      <div class="row" style="margin:0">
+        <input type="text" id="ft-name" placeholder="任务名" style="width:220px"/>
+        <select id="ft-policy" style="min-width:180px"><option value="">默认选项</option></select>
+        <button class="btn primary" onclick="fofaSubmitTask()">提交采集任务</button>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">免密被动来源</div>
+      <div class="dim2" style="font-size:13px;margin-bottom:8px">以下来源无需凭证，在 config.yaml 的 QUERY_PLUGIN 段以 enable 开关控制</div>
+      <div class="chips" id="src-keyless"></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">登录态与模型类数据源</div>
+      <div class="row" style="margin:0">
+        <a href="#/sessions">会话池 →</a><span class="dim2" style="font-size:13px">凤鸟 / 爱企查 / 天眼查 / 快查（粘贴 token，不在此页）</span>
+      </div>
+      <div class="row" style="margin:8px 0 0">
+        <a href="#/ai">AI 配置 →</a><span class="dim2" style="font-size:13px">LLM 供应商（站点 AI 研判用）</span>
+      </div>
+    </div>`;
+  const [body, polB] = await Promise.all([
+    api("/integration/").catch(e=>({})),
+    api("/policy/?size=200").catch(e=>({})),
+  ]);
+  const d = body.data || {};
+  srcPolicies = (polB.data && polB.data.items) || [];
+  const ftSel = $("#ft-policy");
+  if (ftSel) ftSel.innerHTML = '<option value="">默认选项</option>' +
+    srcPolicies.map(p=>`<option value="${esc(p._id)}">${esc(p.name)}</option>`).join("");
+  renderSources(d);
+};
+
+function renderSources(d){
+  const groupsBox = $("#src-groups");
+  if (!groupsBox) return;
+  const GROUP_TITLES = {mapping:"空间测绘", plugin:"被动收集", intel:"情报平台"};
+  groupsBox.innerHTML = (d.groups||[]).map(g=>`
+    <div class="dim2" style="font-size:13px;letter-spacing:1px;margin:16px 0 8px">${GROUP_TITLES[g.group]||g.group}</div>
+    ${g.items.map(it=>srcCardHtml(it)).join("")}`).join("");
+  const keyless = $("#src-keyless");
+  if (keyless) keyless.innerHTML = (d.keyless_sources||[]).map(s=>
+    `<span class="chip">${esc(s.name)}</span>`).join("") || '<span class="dim2">—</span>';
+}
+
+function srcCardHtml(it){
+  const LABEL = {};
+  (it.field_defs||[]).forEach(d=>{ LABEL[d.key] = d.label; });
+  const fields = Object.entries(it.values||{}).map(([f, masked])=>{
+    return `<div style="margin:6px 0">
+      <div class="dim2" style="font-size:13px">${esc(LABEL[f]||f)}</div>
+      <input type="text" id="src-${esc(it.vendor)}-${esc(f)}" data-field="${esc(f)}"
+             value="${esc(masked)}" placeholder="${it.configured?"留空保持原值":""}" style="width:100%"/>
+      ${masked?`<div class="dim2" style="font-size:12px">当前（掩码）: ${esc(masked)}</div>`:""}
+    </div>`;
+  }).join("");
+  return `<div class="card" style="margin-bottom:12px">
+    <div class="row" style="margin:0">
+      <b style="font-size:14px">${esc(it.name)}</b>
+      <span class="badge ${it.configured?"b-ok":"b-dim"}">${it.configured?"已配置":"未配置"}</span>
+      ${it.enabled===undefined?"":`<span class="badge ${it.enabled?"b-info":"b-dim"}">${it.enabled?"收集启用":"收集停用"}</span>`}
+      ${it.testable?"":'<span class="badge b-dim">无内置探活</span>'}
+      <span class="spacer"></span>
+      ${it.testable?`<button class="btn sm" onclick="srcTest('${esc(it.vendor)}')">测试连接</button>`:""}
+      <button class="btn sm danger" onclick="srcClear('${esc(it.vendor)}')">清除</button>
+      <button class="btn sm primary" onclick="srcSave('${esc(it.vendor)}')">保存</button>
+    </div>
+    <div class="dim2" style="font-size:13px;margin:6px 0">${esc(it.hint||"")}</div>
+    ${fields}
+    ${it.enabled!==undefined?`<label class="chk" style="margin-top:6px">
+      <input type="checkbox" id="src-${esc(it.vendor)}-enable" ${it.enabled?"checked":""}/> ${esc(it.enable_hint||"启用被动收集")}</label>`:""}
+  </div>`;
+}
+
+function srcCollectFields(vendor){
+  const fields = {};
+  document.querySelectorAll(`[id^="src-${vendor}-"][data-field]`).forEach(input=>{
+    const v = input.value.trim();
+    if (v) fields[input.dataset.field] = v;
+  });
+  return fields;
+}
+
+async function srcSave(vendor){
+  const payload = {vendor, fields: srcCollectFields(vendor)};
+  const enableCk = document.getElementById(`src-${vendor}-enable`);
+  if (enableCk) payload.enable = enableCk.checked;
+  const body = await api("/integration/", {method:"POST", json:payload}).catch(e=>({message:String(e)}));
+  if (body.code === 200){ toast(body.message || "已保存"); ROUTES.sources(); }
+  else toast(body.message || "保存失败");
+}
+
+async function srcTest(vendor){
+  toast("探活中…");
+  const body = await api("/integration/test/", {method:"POST", json:{vendor}}).catch(e=>({}));
+  const d = (body.data||{});
+  toast(d.ok ? ("连接正常：" + (d.message||"")) : ("探活失败：" + (d.message||"")));
+}
+
+async function srcClear(vendor){
+  if (!confirm("确认清除该数据源凭证并停用？")) return;
+  const body = await api("/integration/", {method:"POST", json:{vendor, clear:true, fields:{}}})
+    .catch(e=>({message:String(e)}));
+  if (body.code === 200){ toast("已清除"); ROUTES.sources(); }
+  else toast(body.message || "清除失败");
+}
+
+async function fofaTestQuery(){
+  const query = ($("#ft-query")||{}).value.trim();
+  if (!query){ toast("请输入 FOFA 查询语句"); return; }
+  $("#ft-hint").textContent = "查询中…";
+  const body = await api("/task_fofa/test", {method:"POST", json:{query}}).catch(e=>({}));
+  const d = body.data || {};
+  const ftHint = $("#ft-hint"); if (!ftHint) return;
+  if (body.code === 200) ftHint.textContent = `命中 ${d.size} 条`;
+  else ftHint.textContent = "失败：" + (d.error || body.message || "");
+}
+
+async function fofaSubmitTask(){
+  const query = ($("#ft-query")||{}).value.trim();
+  const name = ($("#ft-name")||{}).value.trim();
+  if (!query || !name){ toast("查询语句与任务名必填"); return; }
+  const payload = {query, name};
+  const pol = ($("#ft-policy")||{}).value;
+  if (pol) payload.policy_id = pol;
+  const body = await api("/task_fofa/submit", {method:"POST", json:payload}).catch(e=>({message:String(e)}));
+  if (body.code === 200){ toast("FOFA 采集任务已提交——任务管理页可查"); }
+  else toast((body.data && body.data.error) || body.message || "提交失败");
+}
+
+/* ============================ 会话池 ============================ */
+const SP_SOURCES = [["fengniao","凤鸟"],["aqc","爱企查"],["tyc","天眼查"],["kc","快查"]];
+
+ROUTES.sessions = function(){
+  $("#view").innerHTML = `
+    <h2 class="page">会话池</h2>
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-size:15px;font-weight:600;margin-bottom:12px">接入数据源</div>
+      <div class="row" style="margin:0">
+        <select id="sp-source" style="width:120px">
+          ${SP_SOURCES.map(([v,t])=>`<option value="${v}">${t}</option>`).join("")}
+        </select>
+        <input type="text" id="sp-account" placeholder="账号名" value="default" style="width:150px"/>
+        <input type="text" id="sp-token" placeholder="粘贴 token 或 cookie 串"
+               style="flex:1;min-width:260px" onkeydown="if(event.key==='Enter')spOnboard()"/>
+        <button class="btn primary" id="sp-onboard-btn" onclick="spOnboard()">接入并探活</button>
+      </div>
+      <details style="margin-top:12px">
+        <summary style="cursor:pointer;color:var(--acc)">如何获取 token？</summary>
+        <div style="margin-top:8px;line-height:1.9">
+          浏览器登录目标站后按 F12 → Application → Cookies → 复制 token 值（完整 JWT，含两个点）。
+          <div class="chips" style="margin-top:6px">
+            <span class="chip">凤鸟 www.riskbird.com · token</span>
+            <span class="chip">爱企查 aiqicha.baidu.com</span>
+            <span class="chip">天眼查 www.tianyancha.com</span>
+          </div>
+          也可粘贴完整 cookie 串（token=xxx; app-uuid=...）。无头自动登录：scripts/session_login.py
+        </div>
+      </details>
+      <details style="margin-top:10px">
+        <summary style="cursor:pointer;color:var(--acc)">高级：导入 storage_state JSON</summary>
+        <div style="margin-top:8px">
+          <textarea id="sp-json" placeholder='{"cookies":[{"name":"token","value":"..."}],"origins":[]}'
+                    style="width:100%;height:110px"></textarea>
+          <button class="btn" style="margin-top:8px" onclick="spImportJson()">导入并探活</button>
+        </div>
+      </details>
+    </div>
+    <div id="sp-list"></div>`;
+  loadSessions();
+};
+
+function spBadge(status){
+  if (status==="ok") return '<span class="badge b-ok">有效</span>';
+  if (status==="expired") return '<span class="badge b-bad">已过期</span>';
+  return '<span class="badge b-dim">未就绪</span>';
+}
+
+async function loadSessions(){
+  const body = await api("/session_pool/accounts/").catch(e=>({}));
+  const items = (body.data && body.data.accounts) || [];
+  const list = $("#sp-list");
+  if (!items.length){
+    list.innerHTML = '<div class="card empty">暂无数据源——在上方粘贴 token 接入</div>';
+    return;
+  }
+  list.innerHTML = items.map(a=>{
+    const src = esc(a.source), acc = esc(a.account);
+    const left = a.expires_hint>0 ? ((a.expires_hint*1000-Date.now())/3600000) : null;
+    return `<div class="card" style="margin-bottom:12px">
+      <div class="row" style="margin:0">
+        <span class="badge ${a.status==="ok"?"b-ok":(a.status==="expired"?"b-bad":"b-dim")}">&nbsp;</span>
+        <span>${src} / ${acc}</span>
+        ${spBadge(a.status)}
+        ${left!=null?`<span style="color:var(--dim)">${left>0?"剩余 "+left.toFixed(1)+"h":"已到期"}</span>`:""}
+        <span class="spacer"></span>
+        <button class="btn sm primary" data-src="${src}" data-acc="${acc}" onclick="spOpenWindow(this)">窗口登录</button>
+        <button class="btn sm" data-src="${src}" data-acc="${acc}" onclick="spProbe(this)">探活</button>
+        <button class="btn sm" onclick="spToggleReboard(this)">重新录入</button>
+        <button class="btn sm danger" data-src="${src}" data-acc="${acc}" onclick="spDelete(this)">删除</button>
+      </div>
+      <div class="sp-reboard" style="display:none;margin-top:12px">
+        <div class="row" style="margin:0">
+          <input type="text" placeholder="粘贴新 token 或 cookie 串"
+                 style="flex:1;min-width:240px"/>
+          <button class="btn" data-src="${src}" data-acc="${acc}"
+                  onclick="spReboardSubmit(this)">更新并探活</button>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <a href="#" style="color:var(--acc)"
+           data-src="${src}" data-acc="${acc}" onclick="spDetail(this);return false">详情</a>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function spImportJson(){
+  let state;
+  try { state = JSON.parse($("#sp-json").value); } catch(e){ toast("JSON 解析失败"); return; }
+  const source = $("#sp-source").value;
+  const account = ($("#sp-account").value.trim() || "default");
+  const body = await api("/session_pool/import_state/", {method:"POST",
+    json:{source, account, state}}).catch(e=>({message:String(e)}));
+  if (body.code === 200){
+    toast(body.data && body.data.ok ? "导入成功" : "已入池，探活未通过");
+    $("#sp-json").value = "";
+    loadSessions();
+  } else {
+    toast(body.message || "导入失败");
+  }
+}
+
+async function spOnboard(){
+  const token = $("#sp-token").value.trim();
+  if (!token){ toast("请粘贴 token"); $("#sp-token").focus(); return; }
+  const btn = $("#sp-onboard-btn");
+  const source = $("#sp-source").value;
+  const account = ($("#sp-account").value.trim() || "default");
+  btn.disabled = true; btn.textContent = "接入中…";
+  const body = await api("/session_pool/set_token/", {method:"POST",
+    json:{source, account, token}}).catch(e=>({message:String(e)}));
+  btn.disabled = false; btn.textContent = "接入并探活";
+  if (body.code === 200){
+    toast(body.data && body.data.ok ? "已接入，状态正常" : "已接入，探活未通过");
+    $("#sp-token").value = "";
+    loadSessions();
+  } else {
+    toast(body.message || "接入失败");
+  }
+}
+
+function spToggleReboard(btn){
+  const box = btn.closest(".card").querySelector(".sp-reboard");
+  box.style.display = box.style.display === "none" ? "block" : "none";
+}
+
+async function spReboardSubmit(btn){
+  const src = btn.dataset.src, acc = btn.dataset.acc;
+  const input = btn.previousElementSibling;
+  const token = input.value.trim();
+  if (!token){ toast("请粘贴 token"); return; }
+  btn.disabled = true; btn.textContent = "更新中…";
+  const body = await api("/session_pool/set_token/", {method:"POST",
+    json:{source: src, account: acc, token}}).catch(e=>({message:String(e)}));
+  btn.disabled = false; btn.textContent = "更新并探活";
+  toast(body.code === 200 ? (body.data && body.data.ok ? "已更新" : "已更新，探活未通过")
+                          : (body.message || "更新失败"));
+  if (body.code === 200) loadSessions();
+}
+
+async function spProbe(btn){
+  const src = btn.dataset.src, acc = btn.dataset.acc;
+  btn.disabled = true;
+  const body = await api("/session_pool/probe/", {method:"POST",
+    json:{source: src, account: acc}}).catch(e=>({message:String(e)}));
+  btn.disabled = false;
+  if (body.code === 200){
+    toast(body.data && body.data.ok ? "探活通过"
+          : ("探活未通过：" + ((body.data && body.data.detail) || "")));
+    loadSessions();
+  } else {
+    toast(body.message || "探活失败");
+  }
+}
+
+async function spDelete(btn){
+  const src = btn.dataset.src, acc = btn.dataset.acc;
+  if (!confirm("确认删除该数据源？已入池的登录态将失效。")) return;
+  const body = await api("/session_pool/accounts/", {method:"DELETE",
+    json:{source: src, account: acc}}).catch(e=>({message:String(e)}));
+  toast(body.code === 200 ? "已删除" : (body.message || "删除失败"));
+  if (body.code === 200) loadSessions();
+}
+
+async function spDetail(btn){
+  const src = btn.dataset.src, acc = btn.dataset.acc;
+  const body = await api("/session_pool/accounts/").catch(e=>({}));
+  const items = (body.data && body.data.accounts) || [];
+  const doc = items.find(a=>a.source===src && a.account===acc) || {};
+  const exp = doc.expires_hint>0 ? new Date(doc.expires_hint*1000).toLocaleString() : "—";
+  openDrawer(`<h3>${esc(src)} / ${esc(acc)}</h3>
+    <div class="dl">
+      <div><b>状态</b> ${spBadge(doc.status)}</div>
+      <div><b>到期</b> ${esc(exp)}</div>
+      <div><b>Cookie</b> ${(doc.cookie_names||[]).map(n=>`<span class="chip">${esc(n)}</span>`).join(" ") || "—"}</div>
+      ${doc.last_error?`<div><b>错误</b> <span style="color:var(--bad)">${esc(doc.last_error)}</span></div>`:""}
+    </div>`);
+}
+
+/* ============================ 企业情报 ============================ */
+const CONF_B = {confirmed:"b-ok", high:"b-info", suspected:"b-warn", none:"b-dim"};
+const CONF_T = {confirmed:"开发商匹配", high:"名称精确", suspected:"名称包含", none:"未匹配"};
+
+ROUTES.enterprise = async function(){
+  $("#view").innerHTML = `
+    <h2 class="page">企业情报</h2>
+    <div class="row">
+      <button class="btn primary" id="en-enrich-all" onclick="enEnrichAll()">解析全部链接</button>
+      <button class="btn" onclick="ROUTES.enterprise()">刷新</button>
+      <span class="dim2" id="en-hint"></span>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div style="font-size:15px;font-weight:600;margin-bottom:10px">集团概览</div>
+      <div id="en-groups"></div>
+    </div>
+    <div id="en-apps">加载中…</div>`;
+  loadEnterprise();
+};
+
+async function loadEnterprise(){
+  // 集团概览
+  try{
+    const gb = await api("/fengniao/groups/?limit=10");
+    const groups = (gb.data && gb.data.items) || [];
+    $("#en-groups").innerHTML = groups.length ? groups.map(g=>{
+      const icp = g.icp_count ?? g.new_domain_count ?? 0;
+      const app = g.app_count ?? (g.companies||[]).reduce((n,c)=>n+((c.app||[]).length),0) ?? 0;
+      return `<div class="row" style="margin:4px 0">
+        <span>${esc(g.root_name || g.name || g.keyword || "")}</span>
+        <span class="badge b-info">ICP ${icp}</span>
+        <span class="badge b-dim">APP ${app}</span>
+      </div>`;
+    }).join("") : '<span class="dim2">暂无集团采集——在引擎/凤鸟采集后显示</span>';
+  }catch(e){ $("#en-groups").innerHTML = '<span class="dim2">—</span>'; }
+
+  // APP 列表（全量，按公司分组）
+  const body = await api("/appdl/apps/?enrich=0").catch(e=>({}));
+  const items = (body.data && body.data.items) || [];
+  const box = $("#en-apps");
+  if (!items.length){ box.innerHTML = '<div class="card empty">暂无 APP 情报——请先进行企业采集</div>'; return; }
+
+  const byEnt = {};
+  items.forEach(it=>{ (byEnt[it.ent_name] = byEnt[it.ent_name] || []).push(it); });
+  box.innerHTML = Object.entries(byEnt).map(([ent, apps])=>`
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:15px;font-weight:600;margin-bottom:10px">${esc(ent)}
+        <span class="badge b-dim">${apps.length} 个 APP</span></div>
+      ${apps.map(it=>{
+        const dl = it.local;
+        return `<div class="row" style="margin:8px 0;padding:8px 0;border-top:1px solid var(--line)">
+          <span>${esc(it.appname)}</span>
+          <span class="badge ${CONF_B[it.confidence]||"b-dim"}">${CONF_T[it.confidence]||"—"}</span>
+          ${it.android_url?`<a href="${esc(it.android_url)}" target="_blank">应用宝</a>`:""}
+          ${it.ios_url?`<a href="${esc(it.ios_url)}" target="_blank">App Store</a>`:""}
+          <span class="spacer"></span>
+          ${it.android_pkg?`<span class="dim2 mono">${esc(it.android_pkg)}</span>`:""}
+          <button class="btn sm" data-intel="${esc(it.intel_id)}" data-idx="${it.app_index}"
+                  onclick="enDownload(this)">下载 APK</button>
+          ${dl?`<a class="badge b-ok" href="/api/appdl/file/?doc_id=${dl.file_id}&Token=${encodeURIComponent(token())}">已下载</a>`:""}
+        </div>`;
+      }).join("")}
+    </div>`).join("");
+}
+
+async function enEnrichAll(){
+  const btn = $("#en-enrich-all");
+  btn.disabled = true;
+  let rounds = 0;
+  // 每轮 enrich=2（后端单请求上限），直到全部解析或 10 轮
+  while (rounds < 10){
+    rounds += 1;
+    const enHint = $("#en-hint"); if (!enHint) break; enHint.textContent = "解析中… 第 " + rounds + " 轮";
+    const body = await api("/appdl/apps/?enrich=2").catch(e=>({}));
+    const items = (body.data && body.data.items) || [];
+    const pending = items.filter(it=>!it.confidence || it.confidence === "none").length;
+    if (!pending) break;
+  }
+  btn.disabled = false;
+  { const _eh = $("#en-hint"); if (_eh) _eh.textContent = ""; }
+  toast("解析完成");
+  loadEnterprise();
+}
+
+async function enDownload(btn){
+  const body = await api("/appdl/download/", {method:"POST",
+    json:{intel_id: btn.dataset.intel, app_index: parseInt(btn.dataset.idx, 10)}})
+    .catch(e=>({message:String(e)}));
+  if (body.code !== 200){ toast(body.message || "下载失败"); return; }
+  const jobId = body.data && body.data.job_id;
+  if (!jobId){ toast("已开始下载"); return; }
+  toast("下载中…");
+  const poll = setInterval(async ()=>{
+    const jb = await api("/appdl/job/?job_id=" + jobId).catch(()=>null);
+    const job = jb && jb.data && jb.data.job;
+    if (job && (job.status === "done" || job.status === "error")){
+      clearInterval(poll);
+      toast(job.status === "done" ? "下载完成" : "下载失败");
+      loadEnterprise();
+    }
+  }, 1500);
+}
+
+/* ============================ 报告 ============================ */
+ROUTES.reports = async function(){
+  $("#view").innerHTML = `
+    <h2 class="page">报告中心</h2>
+    <div class="row">
+      <input type="text" id="rp-scope" placeholder="资产组 scope_id" style="width:280px"/>
+      <input type="text" id="rp-name" placeholder="名称（可选）" style="width:170px"/>
+      <label class="chk"><input type="checkbox" id="rp-llm"/> LLM 执行摘要</label>
+      <button class="btn primary" onclick="rpGenerate()">生成报告</button>
+      <button class="btn" onclick="ROUTES.reports()">刷新</button>
+    </div>
+    <span id="rp-hint" class="dim2" style="font-size:13px"></span>
+    <div class="tblwrap" style="margin-top:10px" id="rp-table">加载中…</div>`;
+  loadReports();
+};
+async function rpGenerate(){
+  const scopeId = $("#rp-scope").value.trim();
+  if (!scopeId){ toast("请填写 scope_id"); return; }
+  const body = await api("/report/generate/", {method:"POST",
+    json:{scope_id: scopeId, scope_name: $("#rp-name").value.trim(),
+          use_llm: $("#rp-llm").checked}}).catch(e=>({message:String(e)}));
+  if (body.code!==200){ toast(body.message||"下发失败"); return; }
+  toast("已下发");
+  const poll = setInterval(async ()=>{
+    const jb = await api("/report/job/?job_id="+body.data.job_id).catch(()=>null);
+    const job = jb && jb.data && jb.data.job;
+    const rpHint = $("#rp-hint"); if (rpHint) rpHint.textContent = job ? ("进度 "+(job.progress_done||0)+"% "+(job.current||"")) : "";
+    if (job && (job.status==="done"||job.status==="error")){
+      clearInterval(poll);
+      toast(job.status==="done" ? "报告已生成" : "失败: "+(job.error||""));
+      ROUTES.reports();
+    }
+  }, 1500);
+}
+async function loadReports(){
+  const body = await api("/report/list/").catch(e=>({}));
+  const items = (body.data && body.data.items) || [];
+  $("#rp-table").innerHTML = items.length ?
+    `<table><thead><tr><th>时间</th><th>资产组</th><th>文件</th><th>规模</th><th>摘要</th><th></th></tr></thead>
+     <tbody>${items.map(r=>`<tr>
+       <td class="mono">${esc(r.create_date||"")}</td><td>${esc(r.scope_name||"")}</td>
+       <td>${esc(r.filename||"")}</td>
+       <td style="color:var(--dim);font-size:13px">${Object.entries(r.counts||{}).map(([k,v])=>k+" "+v).join(" / ")}</td>
+       <td style="color:var(--dim);font-size:13px">${esc((r.summary||"").slice(0,50))}</td>
+       <td><a href="${API}/report/download/?report_id=${r._id}&Token=${encodeURIComponent(token())}">下载</a></td>
+     </tr>`).join("")}</tbody></table>` : '<div class="empty">暂无报告</div>';
+}
+
+/* ============================ 设置：通知 ============================ */
+ROUTES.settings = async function(){
+  const body = await api("/notify_config/").catch(e=>({data:{}}));
+  const data = (body.data || {});
+  const cards = Object.entries({
+    dingding: "钉钉", feishu: "飞书", wxwork: "企业微信", webhook: "通用 Webhook", email: "邮件",
+  }).map(([ch, label])=>{
+    const conf = data[ch] || {configured:false, values:{}};
+    const fieldsByChannel = {
+      dingding: [["AccessToken","AccessToken"],["加签 Secret","加签 Secret"]],
+      feishu: [["Webhook 地址","Webhook 地址"],["加签 Secret","加签 Secret"]],
+      wxwork: [["Webhook 地址","Webhook 地址"]],
+      webhook: [["URL","URL"],["Token","Token"]],
+      email: [["SMTP 服务器","HOST"],["端口","PORT"],["账号","USERNAME"],["密码","PASSWORD"],["收件人","TO"]],
+    }[ch];
+    const inputs = fieldsByChannel.map(([label], idx)=>{
+      const masked = conf.values[label] || "";
+      const inputId = `nc-${ch}-${idx}`;
+      return `<div style="margin:6px 0"><div class="dim2" style="font-size:13px">${esc(label)}</div>
+        <input type="text" id="${inputId}" data-label="${esc(label)}"
+               value="${esc(masked)}" style="width:100%"/>
+        ${masked?`<div class="dim2" style="font-size:13px">当前（掩码）: ${esc(masked)}</div>`:""}</div>`;
+    }).join("");
+    return `<div class="card" style="margin-bottom:12px">
+      <div class="row" style="margin:0">
+        <b style="font-size:14px">${label}</b>
+        <span class="badge ${conf.configured?"b-ok":"b-dim"}">${conf.configured?"已配置":"未配置"}</span>
+        <span class="spacer"></span>
+        <button class="btn danger sm" onclick="notifyClear('${ch}')">清空</button>
+        <button class="btn sm" onclick="notifySave('${ch}')">保存</button>
+      </div>
+      <div style="margin-top:8px">${inputs}</div>
+    </div>`;
+  }).join("");
+  $("#view").innerHTML = `<h2 class="page">系统设置 · 通知渠道</h2>
+    <div style="color:var(--dim);font-size:13px;margin-bottom:14px">
+      监控变化告警与凤鸟 token 到期提醒将发送到已配置渠道；掩码显示的字段重新输入才会更新。</div>
+    ${cards}`;
+};
+async function notifySave(channel){
+  const fields = {};
+  document.querySelectorAll(`[id^="nc-${channel}-"]`).forEach(input=>{
+    const label = input.dataset.label;
+    if (label && input.value.trim()) fields[label] = input.value.trim();
+  });
+  const body = await api("/notify_config/", {method:"POST",
+    json:{channel, fields}}).catch(e=>({message:String(e)}));
+  toast(body.code===200 ? "已保存" : (body.message||"失败"));
+  ROUTES.settings();
+}
+async function notifyClear(channel){
+  if (!confirm("确认清空该渠道配置？")) return;
+  await api("/notify_config/", {method:"POST", json:{channel, clear:true, fields:{}}});
+  ROUTES.settings();
+}
+
+/* ============================ 用户管理 ============================ */
+ROUTES.users = async function(){
+  if (myRole() !== "admin"){ $("#view").innerHTML = '<div class="empty">仅管理员可见</div>'; return; }
+  $("#view").innerHTML = `
+    <h2 class="page">用户管理</h2>
+    <div class="row">
+      <input type="text" id="us-name" placeholder="用户名" style="width:160px"/>
+      <input type="password" id="us-pass" placeholder="密码（≥8 位）" style="width:180px"/>
+      <select id="us-role"><option value="operator">operator</option>
+        <option value="auditor">auditor</option><option value="admin">admin</option></select>
+      <button class="btn primary" onclick="usAdd()">创建</button>
+      <button class="btn" onclick="ROUTES.users()">刷新</button>
+    </div>
+    <div class="tblwrap" id="us-table">加载中…</div>`;
+  loadUsers();
+};
+async function loadUsers(){
+  const body = await api("/user/list/").catch(e=>({}));
+  if (body.code !== 200){ $("#us-table").innerHTML = '<div class="empty">仅管理员可见</div>'; return; }
+  const items = (body.data && body.data.items) || [];
+  $("#us-table").innerHTML = items.length ?
+    `<table><thead><tr><th>用户</th><th>角色</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+     <tbody>${items.map(u=>{
+       const me = u.username === myUser();
+       return `<tr><td>${esc(u.username)}${me?' <span class="badge b-info">我</span>':""}</td>
+         <td><span class="badge ${u.role==="admin"?"b-warn":(u.role==="auditor"?"b-dim":"b-info")}">${esc(u.role)}</span></td>
+         <td>${u.disabled?'<span class="badge b-bad">已禁用</span>':'<span class="badge b-ok">正常</span>'}</td>
+         <td class="mono dim">${esc(u.create_date||"")}</td>
+         <td>${me?"":`<a href="#" onclick="usRole('${esc(u.username)}');return false">改角色</a>
+           · <a href="#" onclick="usDisable('${esc(u.username)}',${!u.disabled});return false">${u.disabled?"启用":"禁用"}</a>`}</td>
+       </tr>`;}).join("")}</tbody></table>` : '<div class="empty">无用户</div>';
+}
+async function usAdd(){
+  const body = await api("/user/add/", {method:"POST", json:{
+    username: $("#us-name").value.trim(), password: $("#us-pass").value,
+    role: $("#us-role").value}}).catch(e=>({message:String(e)}));
+  toast(body.code===200 ? "已创建" : (body.message||"失败"));
+  ROUTES.users();
+}
+async function usRole(username){
+  const role = prompt("新角色（admin/operator/auditor）：", "operator");
+  if (!role) return;
+  await api("/user/set_role/", {method:"POST", json:{username, role}});
+  ROUTES.users();
+}
+async function usDisable(username, disabled){
+  await api("/user/disable/", {method:"POST", json:{username, disabled}});
+  ROUTES.users();
+}
+
+/* ============================ 智能助手（悬浮窗 + 会话页共用） ============================ */
+let AG = {conv: null, title: "新会话", msgs: [], sending: false, convs: []};
+
+function aiToggle(){
+  const p = $("#ai-panel");
+  p.classList.toggle("open");
+  if (p.classList.contains("open")){ agLoadConvs(); agRender("float"); }
+}
+
+function agMsgHtml(m){
+  if (m.role === "user")
+    return '<div class="ai-msg user">' + esc(m.content) + '</div>';
+  let html = '<div class="ai-msg bot">' + esc(m.content || "");
+  (m.steps || []).forEach(s=>{
+    html += '<div class="tool-step"><b>' + esc(s.name) + '</b> ' + esc(s.text || "") +
+      (s.done ? (s.ok ? ' ✓' : ' ✗') : ' …') + '</div>';
+  });
+  return html + '</div>';
+}
+
+function agRender(view){
+  ["float", "page"].forEach(v=>{
+    const box = $("#ai-msgs-" + v);
+    if (!box) return;
+    box.innerHTML = AG.msgs.length ? AG.msgs.map(agMsgHtml).join("")
+      : '<div class="dim2" style="margin:auto">布置任务给助手——它可以直接调用平台功能（检索资产/下发任务/查风险/生成报告…）</div>';
+    box.scrollTop = box.scrollHeight;
+    const t = $("#ai-conv-title-" + v);
+    if (t) t.textContent = AG.title;
+  });
+}
+
+async function agLoadConvs(){
+  const body = await api("/agent/conversations/").catch(e=>({}));
+  AG.convs = (body.data && body.data.items) || [];
+  const list = $("#ag-conv-list");
+  if (list) list.innerHTML = AG.convs.length ? AG.convs.map(c=>
+    `<div class="ai-conv-item ${c._id===AG.conv?"active":""}" onclick="agOpenConv('${esc(c._id)}')">
+       <span>${esc(c.title || "新会话")}</span>
+       <a href="#" style="float:right;color:var(--dim)" onclick="agDeleteConv('${esc(c._id)}');event.stopPropagation()">✕</a>
+     </div>`).join("") : '<div class="empty">暂无会话</div>';
+}
+
+function agNew(){
+  AG.conv = null; AG.title = "新会话"; AG.msgs = [];
+  agRender("float"); agRender("page"); agLoadConvs();
+}
+
+async function agOpenConv(id){
+  AG.conv = id;
+  const body = await api("/agent/conversations/messages/?conversation_id=" + id)
+    .catch(e=>({}));
+  AG.msgs = ((body.data && body.data.items) || []).map(m=>({
+    role: m.role === "tool" ? "assistant" : m.role,
+    content: m.role === "tool" ? "" : m.content,
+    steps: m.role === "tool"
+      ? [{name: m.name || "工具", text: "执行完成", done: true, ok: true}] : [],
+  }));
+  const conv = AG.convs.find(c=>c._id === id);
+  AG.title = conv ? (conv.title || "新会话") : "新会话";
+  agRender("float"); agRender("page"); agLoadConvs();
+  if (window.gsap) gsap.fromTo("#ai-msgs-page", {opacity:0}, {opacity:1, duration:.25});
+}
+
+async function agDeleteConv(id){
+  if (!confirm("删除该会话？")) return;
+  await api("/agent/conversations/delete/", {method:"POST", json:{conversation_id: id}});
+  if (AG.conv === id) agNew();
+  else agLoadConvs();
+}
+
+async function agSend(view){
+  const ta = $("#ai-input-" + view);
+  if (!ta || AG.sending) return;
+  const text = ta.value.trim();
+  if (!text){ toast("请输入消息"); return; }
+  ta.value = "";
+  AG.msgs.push({role: "user", content: text});
+  const botMsg = {role: "assistant", content: "", steps: []};
+  AG.msgs.push(botMsg);
+  AG.sending = true;
+  agRender(view);
+
+  try{
+    const resp = await fetch(API + "/agent/chat", {
+      method: "POST",
+      headers: {"Token": token(), "Content-Type": "application/json"},
+      body: JSON.stringify({message: text, conversation_id: AG.conv || ""}),
+    });
+    if (!resp.ok || !resp.body){ throw new Error("HTTP " + resp.status); }
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    while (true){
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream: true});
+      let idx;
+      while ((idx = buf.indexOf("\n\n")) >= 0){
+        const chunk = buf.slice(0, idx).trim();
+        buf = buf.slice(idx + 2);
+        if (!chunk.startsWith("data: ")) continue;
+        let ev;
+        try { ev = JSON.parse(chunk.slice(6)); } catch(e){ continue; }
+        if (ev.type === "start"){
+          AG.conv = ev.conversation_id;
+        } else if (ev.type === "delta"){
+          botMsg.content += ev.text || "";
+        } else if (ev.type === "tool"){
+          botMsg.steps.push({name: ev.name, text: "调用中", done: false});
+        } else if (ev.type === "tool_result"){
+          const step = botMsg.steps.find(s=>s.name === ev.name && !s.done);
+          if (step){ step.done = true; step.ok = ev.ok;
+            step.text = ev.ok ? "完成" : "失败"; }
+          if (!ev.ok) botMsg.content += "\n[工具 " + ev.name + " 失败]";
+        } else if (ev.type === "error"){
+          botMsg.content += "\n⚠ " + (ev.message || "出错");
+        } else if (ev.type === "done"){
+          agLoadConvs();
+        }
+        agRender(view);
+      }
+    }
+  }catch(e){
+    botMsg.content += "\n⚠ 连接失败: " + e.message;
+  }
+  AG.sending = false;
+  agRender(view);
+}
+
+ROUTES.assistant = function(){
+  $("#view").innerHTML = `
+    <h2 class="page">智能助手</h2>
+    <div style="display:flex;gap:14px;height:calc(100vh - 250px)">
+      <div style="width:240px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;min-height:0">
+        <button class="btn primary" onclick="agNew()">新建会话</button>
+        <div class="tblwrap" style="flex:1;max-height:none;padding:6px" id="ag-conv-list">加载中…</div>
+      </div>
+      <div class="card" style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:0">
+        <div class="ai-msgs" id="ai-msgs-page"></div>
+        <div class="ai-input">
+          <textarea id="ai-input-page" placeholder="布置任务，如：帮我看看 example.com 的风险并生成报告"
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();agSend('page')}"></textarea>
+          <button class="btn primary" onclick="agSend('page')">发送</button>
+        </div>
+      </div>
+    </div>`;
+  agLoadConvs();
+  agRender("page");
+};
+
+/* ============================ 会话池窗口登录（M3 网关） ============================ */
+async function spOpenWindow(btn){
+  const src = btn.dataset.src, acc = btn.dataset.acc;
+  toast("正在打开浏览器窗口…");
+  const body = await api("/session_pool/window/", {method:"POST",
+    json:{source: src, account: acc}}).catch(e=>({message:String(e)}));
+  if (body.code !== 200){ toast(body.message || "打开失败"); return; }
+  const d = body.data || {};
+  const host = location.hostname;
+  $("#win-title").textContent = "窗口登录 · " + src + " / " + acc;
+  $("#win-iframe").src = "http://" + host + ":" + d.ws_port +
+    "/vnc.html?autoconnect=1&host=" + host + "&port=" + d.ws_port;
+  $("#win-modal").dataset.src = src;
+  $("#win-modal").dataset.acc = acc;
+  $("#win-modal").style.display = "flex";
+}
+
+async function spCapture(){
+  const m = $("#win-modal");
+  const src = m.dataset.src, acc = m.dataset.acc;
+  const btn = $("#win-capture-btn");
+  btn.disabled = true; btn.textContent = "抓取中…";
+  const body = await api("/session_pool/capture/", {method:"POST",
+    json:{source: src, account: acc}}).catch(e=>({message:String(e)}));
+  btn.disabled = false; btn.textContent = "完成并抓取";
+  if (body.code !== 200){ toast(body.message || "抓取失败"); return; }
+  const d = body.data || {};
+  toast(d.ok ? "已抓取并探活通过（" + (d.cookie_names||[]).join(", ") + "）"
+             : "已抓取，探活未通过：" + (d.detail || ""));
+  m.style.display = "none";
+  $("#win-iframe").src = "about:blank";
+  if (location.hash.indexOf("sessions") >= 0) loadSessions();
+}
+
+function spCloseWindow(){
+  const m = $("#win-modal");
+  const src = m.dataset.src, acc = m.dataset.acc;
+  m.style.display = "none";
+  $("#win-iframe").src = "about:blank";
+  if (src && acc) api("/session_pool/window/close/", {method:"POST",
+    json:{source: src, account: acc}}).then(()=>{ if (location.hash.indexOf("sessions") >= 0) loadSessions(); });
+}
+
+/* ============================ 启动 ============================ */
+boot();
+</script>
+</body>
+</html>
